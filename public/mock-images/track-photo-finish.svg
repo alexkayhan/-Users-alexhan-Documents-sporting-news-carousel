@@ -1,0 +1,18 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#07131F"/>
+  <rect x="0" y="110" width="1200" height="680" fill="#A2442A"/>
+  <path d="M0 240H1200" stroke="#FFDCC6" stroke-width="8"/>
+  <path d="M0 380H1200" stroke="#FFDCC6" stroke-width="8"/>
+  <path d="M0 520H1200" stroke="#FFDCC6" stroke-width="8"/>
+  <path d="M0 660H1200" stroke="#FFDCC6" stroke-width="8"/>
+  <path d="M920 110V790" stroke="#F5F7FB" stroke-width="14"/>
+  <path d="M955 110V790" stroke="#F5F7FB" stroke-width="6" stroke-dasharray="14 14"/>
+  <circle cx="735" cy="430" r="48" fill="#7CE2FF"/>
+  <rect x="685" y="470" width="95" height="165" rx="26" fill="#7CE2FF"/>
+  <circle cx="805" cy="410" r="48" fill="#F5F7FB"/>
+  <rect x="758" y="450" width="90" height="175" rx="26" fill="#F5F7FB"/>
+  <circle cx="260" cy="240" r="90" fill="#06111A" fill-opacity="0.72"/>
+  <text x="260" y="225" text-anchor="middle" fill="#7CE2FF" font-size="24" font-family="Arial, sans-serif">PHOTO</text>
+  <text x="260" y="274" text-anchor="middle" fill="#F5F7FB" font-size="58" font-family="Arial, sans-serif" font-weight="700">LEAN</text>
+</svg>
+
