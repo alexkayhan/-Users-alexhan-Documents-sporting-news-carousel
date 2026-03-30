@@ -9,9 +9,7 @@ type StoryCardProps = {
   total: number;
   isActive: boolean;
   isInteractive?: boolean;
-  isBookmarked: boolean;
   onSelectStory?: () => void;
-  onToggleBookmark: (storyId: string) => void;
   registerRef: (element: HTMLElement | null) => void;
   style?: CSSProperties;
 };
@@ -22,9 +20,7 @@ export function StoryCard({
   total,
   isActive,
   isInteractive = true,
-  isBookmarked,
   onSelectStory,
-  onToggleBookmark,
   registerRef,
   style,
 }: StoryCardProps) {
@@ -98,25 +94,6 @@ export function StoryCard({
             </div>
           </div>
         </div>
-
-        <button
-          type="button"
-          className="story-card__bookmark"
-          aria-pressed={isBookmarked}
-          aria-label={isBookmarked ? "Remove bookmark" : "Save bookmark"}
-          tabIndex={isInteractive ? 0 : -1}
-          onClick={(event) => {
-            event.stopPropagation();
-
-            if (!isInteractive) {
-              return;
-            }
-
-            onToggleBookmark(story.id);
-          }}
-        >
-          {isBookmarked ? "Saved" : "Save"}
-        </button>
 
         {isInteractive ? (
           <a

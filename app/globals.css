@@ -291,58 +291,8 @@ select {
     radial-gradient(circle at 50% 100%, rgba(0, 185, 242, 0.14), transparent 32%);
 }
 
-.feed-header {
-  position: fixed;
-  top: var(--top-games-bar-total-height);
-  left: 0;
-  right: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.9rem 1rem 0.85rem;
-  background: linear-gradient(180deg, rgba(2, 7, 13, 0.82), rgba(2, 7, 13, 0));
-}
-
-.feed-title {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.feed-eyebrow {
-  margin: 0;
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.feed-heading {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.feed-counter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 4.25rem;
-  padding: 0.55rem 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(7, 19, 31, 0.65);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  backdrop-filter: blur(18px);
-}
-
-.feed-counter:empty {
-  visibility: hidden;
-}
-
 .feed-shell {
-  --feed-top-padding: calc(var(--top-games-bar-total-height) + 5rem);
+  --feed-top-padding: calc(var(--top-games-bar-total-height) + 1.5rem);
   --feed-bottom-padding: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
   --card-width: min(29rem, calc(100vw - 2.5rem));
   --card-height: calc(100dvh - var(--feed-top-padding) - var(--feed-bottom-padding));
@@ -474,7 +424,6 @@ select {
 }
 
 .story-card:not(.is-active) .story-card__open,
-.story-card:not(.is-active) .story-card__bookmark,
 .story-card:not(.is-active) .story-media__audio-toggle {
   pointer-events: none;
 }
@@ -647,30 +596,6 @@ select {
   transition: width 180ms ease;
 }
 
-.story-card__bookmark {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 2;
-  padding: 0.7rem 0.95rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 999px;
-  background: rgba(4, 10, 16, 0.68);
-  color: var(--text-primary);
-  font-size: 0.8rem;
-  font-weight: 700;
-  backdrop-filter: blur(14px);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.story-card__bookmark[aria-pressed="true"] {
-  background: rgba(124, 226, 255, 0.18);
-  border-color: rgba(124, 226, 255, 0.4);
-  color: var(--accent);
-}
-
-.story-card__bookmark:focus-visible,
 .story-card__open:focus-visible,
 .story-media__audio-toggle:focus-visible,
 .story-detail__icon-button:focus-visible,
@@ -1049,11 +974,6 @@ select {
 }
 
 @media (min-width: 768px) {
-  .feed-header {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
   .feed-shell {
     --card-width: min(36rem, calc(100vw - 8rem));
   }

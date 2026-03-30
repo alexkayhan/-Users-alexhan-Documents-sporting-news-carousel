@@ -3,10 +3,6 @@
 import { startTransition, useEffect, useState } from "react";
 import { FeedState } from "@/components/feed-state";
 import { StoryFeed } from "@/components/story-feed";
-import {
-  readBookmarkedStoryIds,
-  writeBookmarkedStoryIds,
-} from "@/lib/bookmarks";
 import type { StoriesResponse, Story } from "@/lib/types";
 
 type FeedStatus = "loading" | "success" | "error";
@@ -24,7 +20,7 @@ type FeedState = {
 
 const PAGE_SIZE = 6;
 const STORIES_REQUEST_TIMEOUT_MS = 8000;
-const STORIES_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const STORIES_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const STORY_TAGS = new Set([
   "Baseball",
   "Basketball",
@@ -191,9 +187,6 @@ export function LiveStoryFeed() {
     isLoadingMore: false,
     loadMoreError: null,
   });
-  const [bookmarkedStoryIds, setBookmarkedStoryIds] = useState<Set<string>>(
-    new Set(),
-  );
 
   async function requestStories(page: number, signal?: AbortSignal) {
     const controller = new AbortController();
@@ -350,25 +343,6 @@ export function LiveStoryFeed() {
     };
   }, []);
 
-  useEffect(() => {
-    setBookmarkedStoryIds(readBookmarkedStoryIds());
-  }, []);
-
-  function toggleBookmark(storyId: string) {
-    setBookmarkedStoryIds((current) => {
-      const nextBookmarks = new Set(current);
-
-      if (nextBookmarks.has(storyId)) {
-        nextBookmarks.delete(storyId);
-      } else {
-        nextBookmarks.add(storyId);
-      }
-
-      writeBookmarkedStoryIds(nextBookmarks);
-      return nextBookmarks;
-    });
-  }
-
   if (state.status === "loading" && state.stories.length === 0) {
     return (
       <FeedState
@@ -414,9 +388,6 @@ export function LiveStoryFeed() {
   return (
     <StoryFeed
       stories={state.stories}
-      eyebrow="Live ESPN Feed"
-      bookmarkedStoryIds={bookmarkedStoryIds}
-      onToggleBookmark={toggleBookmark}
       nextPage={state.nextPage}
       hasMore={state.hasMore}
       isLoadingMore={state.isLoadingMore}

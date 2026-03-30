@@ -7,9 +7,6 @@ import { StoryCard } from "@/components/story-card";
 
 type StoryFeedProps = {
   stories: Story[];
-  eyebrow?: string;
-  bookmarkedStoryIds: Set<string>;
-  onToggleBookmark: (storyId: string) => void;
   nextPage: number | null;
   hasMore: boolean;
   isLoadingMore: boolean;
@@ -229,9 +226,6 @@ function getCarouselPresentation(
 
 export function StoryFeed({
   stories,
-  eyebrow = "Top Sports Headlines",
-  bookmarkedStoryIds,
-  onToggleBookmark,
   nextPage,
   hasMore,
   isLoadingMore,
@@ -373,12 +367,7 @@ export function StoryFeed({
   }
 
   return (
-    <FeedFrame
-      counter={`${activeIndex + 1}/${stories.length}`}
-      eyebrow={eyebrow}
-      showHint={false}
-      isDialogOpen={isDialogOpen}
-    >
+    <FeedFrame showHint={false}>
       <p
         id="feed-instructions"
         className="sr-only"
@@ -435,10 +424,8 @@ export function StoryFeed({
               index={index}
               total={stories.length}
               isActive={isInteractive}
-              isBookmarked={bookmarkedStoryIds.has(story.id)}
               isInteractive={isInteractive}
               onSelectStory={() => goToStory(index)}
-              onToggleBookmark={onToggleBookmark}
               registerRef={(element) => {
                 storyRefs.current[index] = element;
               }}

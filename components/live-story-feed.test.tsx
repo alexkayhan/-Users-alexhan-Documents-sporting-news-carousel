@@ -6,12 +6,10 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LiveStoryFeed } from "@/components/live-story-feed";
-import { getBookmarkStorageKey } from "@/lib/bookmarks";
 
 function createStory(id: string, headline: string) {
   return {
@@ -47,7 +45,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
   cleanup();
-  window.localStorage?.removeItem?.(getBookmarkStorageKey());
   window.history.replaceState(null, "", "/");
 });
 
@@ -124,7 +121,7 @@ describe("LiveStoryFeed", () => {
     ).not.toHaveLength(0);
   });
 
-  it("registers a 6 hour refresh interval for reloading ESPN headlines", async () => {
+  it("registers a 24 hour refresh interval for reloading ESPN headlines", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -163,7 +160,7 @@ describe("LiveStoryFeed", () => {
 
     expect(setIntervalSpy).toHaveBeenCalledWith(
       expect.any(Function),
-      6 * 60 * 60 * 1000,
+      24 * 60 * 60 * 1000,
     );
   });
 
@@ -443,7 +440,7 @@ describe("LiveStoryFeed", () => {
     expect(screen.getByText("Unexpected story response.")).toBeInTheDocument();
   });
 
-  it("saves a bookmark, exposes the story link, and loads the next page", async () => {
+  it("exposes the story link and loads the next page", async () => {
     const pageOnePayload = {
       items: [
         createStory("story-1", "Playoff race tightens after late winner"),
@@ -510,19 +507,6 @@ describe("LiveStoryFeed", () => {
       name: "Playoff race tightens after late winner",
     });
 
-    const openingCard = storyLinks[0].closest("article");
-
-    if (!openingCard) {
-      throw new Error("Expected the story opener to be inside a story card.");
-    }
-
-    await userEvent.click(
-      within(openingCard).getByRole("button", { name: "Save bookmark" }),
-    );
-
-    expect(
-      window.localStorage.getItem(getBookmarkStorageKey()),
-    ).toContain("story-1");
     expect(storyLinks[0]).toHaveAttribute("href", "https://example.com/story-1");
     expect(storyLinks[0]).toHaveAttribute("target", "_blank");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

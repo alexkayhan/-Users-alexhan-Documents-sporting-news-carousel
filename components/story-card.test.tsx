@@ -30,16 +30,12 @@ function createVideoStory(): Story {
 
 describe("StoryCard video controls", () => {
   it("autoplays muted, exposes a direct story link, and lets the sound button toggle", async () => {
-    const onToggleBookmark = vi.fn();
-
     render(
       <StoryCard
         story={createVideoStory()}
         index={0}
         total={1}
         isActive
-        isBookmarked={false}
-        onToggleBookmark={onToggleBookmark}
         registerRef={vi.fn()}
       />,
     );
@@ -61,7 +57,6 @@ describe("StoryCard video controls", () => {
     const soundButton = screen.getByRole("button", { name: "Turn sound on" });
     await userEvent.click(soundButton);
 
-    expect(onToggleBookmark).not.toHaveBeenCalled();
     expect(video?.muted).toBe(false);
     expect(
       screen.getByRole("button", { name: "Turn sound off" }),

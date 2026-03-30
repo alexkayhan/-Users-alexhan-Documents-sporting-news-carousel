@@ -69,7 +69,7 @@ const TRACKING_QUERY_PARAMS = new Set([
 ]);
 
 const ESPN_REQUEST_TIMEOUT_MS = 8000;
-const ESPN_REVALIDATE_SECONDS = 6 * 60 * 60;
+const ESPN_REVALIDATE_SECONDS = 24 * 60 * 60;
 const XML_ENTITY_MAP: Record<string, string> = {
   amp: "&",
   apos: "'",
