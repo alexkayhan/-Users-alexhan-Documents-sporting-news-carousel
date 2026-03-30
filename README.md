@@ -2,8 +2,7 @@
 
 A shareable Next.js sports carousel that combines:
 
-- a rotating Reddit-based sports story feed
-- autoplaying Reddit-hosted video on active cards
+- a rotating ESPN RSS sports story feed
 - a top odds bar sourced from ESPN's DraftKings-powered odds page
 
 ## Stack
@@ -12,7 +11,6 @@ A shareable Next.js sports carousel that combines:
 - React 19
 - TypeScript
 - Vitest + Testing Library
-- `hls.js` for Reddit video audio playback in browsers that do not support HLS natively
 
 ## Local development
 
@@ -32,7 +30,7 @@ npm start
 
 ## Deploying To Vercel
 
-This project does not require any environment variables right now.
+No environment variables are required for the ESPN RSS story feed.
 
 ### Option 1: Vercel dashboard
 
@@ -57,6 +55,6 @@ vercel --prod
 
 ## Notes
 
-- Story cards link out in a new tab so the carousel stays open.
-- The Reddit feed depends on Reddit availability and rate limits.
+- Story cards open the original ESPN article in a new tab so the carousel stays open.
+- Headlines and summaries are taken directly from ESPN's RSS feeds.
 - The top games bar depends on ESPN's public odds page continuing to expose the same embedded data shape.

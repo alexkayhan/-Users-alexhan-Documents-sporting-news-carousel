@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { mockStories } from "@/data/mock-stories";
 import {
-  NewsApiRequestError,
   buildMockStoriesResponse,
   fetchSportsStories,
   inferStoryTag,
@@ -10,113 +9,64 @@ import {
   sanitizeSummary,
 } from "@/lib/news-api";
 
-function createRedditListing({
-  author = "boxscore_bot",
-  comments = 91,
-  createdUtc = 1_774_644_800,
-  domain = "self.nfl",
-  imageUrl = "https://preview.redd.it/nfl-top.jpg?width=1080&format=pjpg&auto=webp&s=abc",
-  isVideo = false,
-  permalink = "/r/nfl/comments/abc123/top_post/",
-  postUrl = "https://www.reddit.com/r/nfl/comments/abc123/top_post/",
-  score = 2400,
-  selftext = "Quarter-by-quarter breakdown from the top thread.",
-  subreddit = "nfl",
-  thumbnail = "https://b.thumbs.redditmedia.com/thumb.jpg",
-  title = "Top post from the subreddit",
-  videoUrl = null,
-  videoHasAudio = null,
-  videoHlsUrl = null,
+function createEspnItemXml({
+  author = "ESPN Staff",
+  description = "Latest update from the ESPN feed.",
+  link = "https://www.espn.com/nfl/story/_/id/12345678/top-story",
+  pubDate = "Mon, 30 Mar 2026 18:34:27 EST",
+  title = "Top ESPN headline",
 }: {
-  author?: string;
-  comments?: number;
-  createdUtc?: number;
-  domain?: string;
-  imageUrl?: string | null;
-  isVideo?: boolean;
-  permalink?: string;
-  postUrl?: string;
-  score?: number;
-  selftext?: string;
-  subreddit?: string;
-  thumbnail?: string | null;
+  author?: string | null;
+  description?: string | null;
+  link?: string;
+  pubDate?: string;
   title?: string;
-  videoUrl?: string | null;
-  videoHasAudio?: boolean | null;
-  videoHlsUrl?: string | null;
 } = {}) {
-  return {
-    data: {
-      children: [
-        {
-          data: {
-            author,
-            created_utc: createdUtc,
-            domain,
-            is_video: isVideo,
-            media: videoUrl
-              ? {
-                  reddit_video: {
-                    fallback_url: videoUrl,
-                    has_audio: videoHasAudio,
-                    hls_url: videoHlsUrl,
-                  },
-                }
-              : null,
-            num_comments: comments,
-            permalink,
-            preview: imageUrl
-              ? {
-                  images: [
-                    {
-                      source: {
-                        url: imageUrl,
-                      },
-                    },
-                  ],
-                }
-              : null,
-            score,
-            secure_media: videoUrl
-              ? {
-                  reddit_video: {
-                    fallback_url: videoUrl,
-                    has_audio: videoHasAudio,
-                    hls_url: videoHlsUrl,
-                  },
-                }
-              : null,
-            selftext,
-            stickied: false,
-            subreddit,
-            thumbnail,
-            title,
-            url: postUrl,
-          },
-        },
-      ],
-    },
-  };
+  return `
+    <item>
+      <title><![CDATA[${title}]]></title>
+      ${
+        description !== null
+          ? `<description><![CDATA[${description}]]></description>`
+          : ""
+      }
+      ${author ? `<dc:creator><![CDATA[${author}]]></dc:creator>` : ""}
+      <link><![CDATA[${link}]]></link>
+      <pubDate>${pubDate}</pubDate>
+    </item>
+  `;
+}
+
+function createEspnFeedXml(itemXml: string) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <channel>
+        <title><![CDATA[www.espn.com - Feed]]></title>
+        ${itemXml}
+      </channel>
+    </rss>`;
 }
 
 describe("sanitizeSummary", () => {
-  it("normalizes whitespace from reddit text", () => {
-    expect(sanitizeSummary("  Big   game \n\n thread  ")).toBe("Big game thread");
+  it("normalizes whitespace and strips markup from ESPN text", () => {
+    expect(sanitizeSummary("  Big   game <b>update</b>\n\n tonight ")).toBe(
+      "Big game update tonight",
+    );
   });
 
-  it("returns a reddit fallback when text is missing", () => {
-    expect(sanitizeSummary(null)).toBe("Top discussion on Reddit right now.");
+  it("returns an ESPN fallback when summary text is missing", () => {
+    expect(sanitizeSummary(null)).toBe("Latest sports headline from ESPN.");
   });
 });
 
 describe("sanitizeContent", () => {
-  it("returns a reddit fallback when content is missing", () => {
-    expect(sanitizeContent("")).toBe("Open the Reddit thread for the full discussion.");
+  it("returns an ESPN fallback when content is missing", () => {
+    expect(sanitizeContent("")).toBe("Open the original ESPN story for the full article.");
   });
 });
 
 describe("inferStoryTag", () => {
-  it("detects football and basketball reddit headlines", () => {
+  it("detects football, basketball, baseball, and hockey headlines", () => {
     expect(
       inferStoryTag({
         title: "NFL playoff picture after the late touchdown",
@@ -126,10 +76,24 @@ describe("inferStoryTag", () => {
 
     expect(
       inferStoryTag({
-        title: "College basketball upset flips the bracket",
+        title: "March Madness bracket is down to the Final Four",
         description: null,
       }),
     ).toBe("Basketball");
+
+    expect(
+      inferStoryTag({
+        title: "MLB opener ends on a walk-off home run",
+        description: null,
+      }),
+    ).toBe("Baseball");
+
+    expect(
+      inferStoryTag({
+        title: "NHL overtime thriller turns on a late power play",
+        description: null,
+      }),
+    ).toBe("Hockey");
   });
 });
 
@@ -137,9 +101,9 @@ describe("normalizeStoryUrl", () => {
   it("strips hash fragments and tracking params", () => {
     expect(
       normalizeStoryUrl(
-        "https://www.reddit.com/r/nfl/comments/abc123/top_post/?utm_source=share#comments",
+        "https://www.espn.com/nfl/story/_/id/12345678/top-story?utm_source=share&fbclid=test#comments",
       ),
-    ).toBe("https://www.reddit.com/r/nfl/comments/abc123/top_post/");
+    ).toBe("https://www.espn.com/nfl/story/_/id/12345678/top-story");
   });
 
   it("rejects non-http urls", () => {
@@ -164,83 +128,84 @@ describe("buildMockStoriesResponse", () => {
 });
 
 describe("fetchSportsStories", () => {
-  it("returns one top post per requested subreddit in order", async () => {
+  it("returns one top ESPN story per configured feed in order", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "nfl",
-              title: "r/nfl top post",
-              permalink: "/r/nfl/comments/1/top_post/",
+          createEspnFeedXml(
+            createEspnItemXml({
+              author: "Courtney Cronin",
+              description:
+                "Colston Loveland and Tyler Warren set the bar high last year.",
+              link: "https://www.espn.com/nfl/story/_/id/48313813/oregon-kenyon-sadiq",
+              title:
+                "Are tight ends making a first-round comeback? Why top NFL draft prospect Kenyon Sadiq could be next in line",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "nba",
-              title: "r/nba top post",
-              permalink: "/r/nba/comments/2/top_post/",
-              selftext: "NBA thread details.",
+          createEspnFeedXml(
+            createEspnItemXml({
+              author: "ESPN Staff",
+              description: "The postseason teams are set and the seeding battle is on.",
+              link: "https://www.espn.com/nba/story/_/id/48351111/nba-playoff-watch",
+              title: "NBA playoff watch: With postseason teams set, seeding battles begin",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "baseball",
-              title: "r/baseball top post",
-              permalink: "/r/baseball/comments/3/top_post/",
-              selftext: "",
-              domain: "mlb.com",
-              imageUrl: null,
+          createEspnFeedXml(
+            createEspnItemXml({
+              author: null,
+              description: "World Series contender tiers: How far away from winning it all is your favorite MLB team?",
+              link: "https://www.espn.com/mlb/story/_/id/48350001/world-series-contender-tiers",
+              title: "World Series contender tiers",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "hockey",
-              title: "r/hockey top post",
-              permalink: "/r/hockey/comments/4/top_post/",
+          createEspnFeedXml(
+            createEspnItemXml({
+              description: "Guide to all 15 games on Showdown Saturday.",
+              link: "https://www.espn.com/nhl/story/_/id/48350002/nhl-playoff-watch",
+              title: "NHL playoff watch: Guide to all 15 games on Showdown Saturday",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "cfb",
-              title: "r/cfb top post",
-              permalink: "/r/cfb/comments/5/top_post/",
+          createEspnFeedXml(
+            createEspnItemXml({
+              description: "Ranking college football coaches and teams that are likely to improve in 2026.",
+              link: "https://www.espn.com/college-football/story/_/id/48350003/teams-likely-to-improve",
+              title: "Ranking college football coaches and teams that are likely to improve in 2026",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify(
-            createRedditListing({
-              subreddit: "collegebasketball",
-              title: "r/collegebasketball top post",
-              permalink: "/r/collegebasketball/comments/6/top_post/",
+          createEspnFeedXml(
+            createEspnItemXml({
+              description: "Four teams will play for it all next weekend.",
+              link: "https://www.espn.com/mens-college-basketball/story/_/id/48341549/final-four-rankings",
+              title: "Men's March Madness 2026: Ranking the Final Four teams",
             }),
           ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
       );
 
@@ -252,229 +217,106 @@ describe("fetchSportsStories", () => {
     expect(payload.totalResults).toBe(6);
     expect(payload.hasMore).toBe(false);
     expect(payload.items.map((story) => story.source)).toEqual([
-      "r/nfl",
-      "r/nba",
-      "r/baseball",
-      "r/hockey",
-      "r/cfb",
-      "r/collegebasketball",
+      "ESPN NFL",
+      "ESPN NBA",
+      "ESPN MLB",
+      "ESPN NHL",
+      "ESPN College Football",
+      "ESPN College Basketball",
     ]);
+    expect(payload.items[0]).toMatchObject({
+      source: "ESPN NFL",
+      tag: "Football",
+      author: "Courtney Cronin",
+      summary: "Colston Loveland and Tyler Warren set the bar high last year.",
+      url: "https://www.espn.com/nfl/story/_/id/48313813/oregon-kenyon-sadiq",
+    });
     expect(payload.items[2]).toMatchObject({
-      source: "r/baseball",
+      source: "ESPN MLB",
       tag: "Baseball",
-      summary: "2,400 upvotes and 91 comments on r/baseball.",
-      content:
-        "Top link post from r/baseball, currently pointing to mlb.com. Open the Reddit thread to read the discussion.",
+      author: null,
     });
-    expect(payload.items[2].image.src).toBe(
-      "https://b.thumbs.redditmedia.com/thumb.jpg",
-    );
-    expect(payload.items[2].image.fallbackSrc).toBe("/mock-images/baseball-grand-slam.svg");
-    expect(payload.items[4].tag).toBe("Football");
-    expect(payload.items[0].image.src).toBe(
-      "https://preview.redd.it/nfl-top.jpg?width=1080&format=pjpg&auto=webp&s=abc",
-    );
-  });
-
-  it("uses a direct post image url when reddit preview data is missing", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            createRedditListing({
-              imageUrl: null,
-              permalink: "/r/nfl/comments/1/top_post/",
-              postUrl: "https://i.redd.it/nfl-highlight-photo.jpg",
-              subreddit: "nfl",
-              title: "r/nfl top post",
-              thumbnail: "self",
-            }),
-          ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      )
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify(createRedditListing()),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
-
-    expect(payload.items[0].image.src).toBe(
-      "https://i.redd.it/nfl-highlight-photo.jpg",
-    );
-  });
-
-  it("maps reddit-hosted videos into the story media payload", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            createRedditListing({
-              isVideo: true,
-              permalink: "/r/nba/comments/1/top_post/",
-              subreddit: "nba",
-              title: "r/nba top video post",
-              videoHasAudio: true,
-              videoHlsUrl:
-                "https://v.redd.it/nba-highlight/HLSPlaylist.m3u8?a=1777499636&v=1&f=sd",
-              videoUrl:
-                "https://v.redd.it/nba-highlight/DASH_720.mp4?source=fallback",
-            }),
-          ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      )
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify(createRedditListing()),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
-
-    expect(payload.items[0].video).toEqual({
-      hasAudio: true,
-      hlsSrc: "https://v.redd.it/nba-highlight/HLSPlaylist.m3u8?a=1777499636&v=1&f=sd",
-      src: "https://v.redd.it/nba-highlight/DASH_720.mp4?source=fallback",
-    });
-    expect(payload.items[0].image.src).toBe(
-      "https://preview.redd.it/nfl-top.jpg?width=1080&format=pjpg&auto=webp&s=abc",
-    );
-  });
-
-  it("falls back to the sport image when no usable reddit image exists", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify(
-            createRedditListing({
-              imageUrl: null,
-              permalink: "/r/hockey/comments/1/top_post/",
-              postUrl: "https://www.reddit.com/r/hockey/comments/1/top_post/",
-              subreddit: "hockey",
-              thumbnail: "self",
-              title: "r/hockey top post",
-            }),
-          ),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      )
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify(createRedditListing()),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
-
-    expect(payload.items[3].source).toBe("r/hockey");
     expect(payload.items[3].image.src).toBe("/mock-images/hockey-glove-save.svg");
-    expect(payload.items[3].image.fallbackSrc).toBe(
-      "/mock-images/hockey-glove-save.svg",
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
-  it("turns timed out reddit requests into a request error", async () => {
-    const timeoutError = new DOMException("The operation was aborted.", "AbortError");
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(timeoutError));
-
-    await expect(fetchSportsStories()).rejects.toMatchObject({
-      message: "Reddit timed out while loading top posts.",
-      status: 504,
-    } satisfies Partial<NewsApiRequestError>);
-  });
-
-  it("returns fallback subreddit cards when every reddit request is access-blocked", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
+  it("falls back to the sport section when one ESPN feed is unavailable", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          createEspnFeedXml(
+            createEspnItemXml({
+              link: "https://www.espn.com/nfl/story/_/id/48313813/oregon-kenyon-sadiq",
+              title: "NFL story",
+            }),
+          ),
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
+        ),
+      )
+      .mockResolvedValueOnce(
         new Response("blocked", {
-          status: 403,
+          status: 503,
           headers: { "Content-Type": "text/plain" },
         }),
-      ),
-    );
-
-    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
-
-    expect(payload.items).toHaveLength(6);
-    expect(payload.items.map((story) => story.source)).toEqual([
-      "r/nfl",
-      "r/nba",
-      "r/baseball",
-      "r/hockey",
-      "r/cfb",
-      "r/collegebasketball",
-    ]);
-    expect(payload.items[0].headline).toContain("r/nfl");
-    expect(payload.items[0].url).toBe("https://www.reddit.com/r/nfl/");
-    expect(payload.items[3].url).toBe("https://www.reddit.com/r/hockey/");
-  });
-
-  it("keeps all subreddit slots by filling failed sources with a fallback card", async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = String(input);
-
-      if (url.includes("/r/hockey/")) {
-        throw new Error("network failed");
-      }
-
-      const subreddit = [
-        "nfl",
-        "nba",
-        "baseball",
-        "cfb",
-        "collegebasketball",
-      ].find((candidate) => url.includes(`/r/${candidate}/`));
-
-      if (!subreddit) {
-        throw new Error(`Unexpected URL: ${url}`);
-      }
-
-      return new Response(
-        JSON.stringify(
-          createRedditListing({
-            subreddit,
-            title: `r/${subreddit} top post`,
-            permalink: `/r/${subreddit}/comments/test/top_post/`,
-          }),
+      )
+      .mockResolvedValue(
+        new Response(
+          createEspnFeedXml(
+            createEspnItemXml({
+              link: "https://www.espn.com/mlb/story/_/id/48350001/world-series-contender-tiers",
+              title: "Fallback-safe story",
+            }),
+          ),
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
         ),
-        { status: 200, headers: { "Content-Type": "application/json" } },
       );
-    });
 
     vi.stubGlobal("fetch", fetchMock);
 
     const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
 
     expect(payload.items).toHaveLength(6);
-    expect(payload.items.map((story) => story.source)).toEqual([
-      "r/nfl",
-      "r/nba",
-      "r/baseball",
-      "r/hockey",
-      "r/cfb",
-      "r/collegebasketball",
-    ]);
-    expect(payload.items[3]).toMatchObject({
-      source: "r/hockey",
-      tag: "Hockey",
-      url: "https://www.reddit.com/r/hockey/",
+    expect(payload.items[1]).toMatchObject({
+      source: "ESPN NBA",
+      tag: "Basketball",
+      url: "https://www.espn.com/nba/",
     });
-    expect(payload.items[3].headline).toContain("r/hockey");
+    expect(payload.items[1].headline).toContain("ESPN NBA");
+  });
+
+  it("uses the headline when the RSS item does not include a description", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          createEspnFeedXml(
+            createEspnItemXml({
+              description: null,
+              link: "https://www.espn.com/nfl/story/_/id/48313813/oregon-kenyon-sadiq",
+              title: "Headline-only feed item",
+            }),
+          ),
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
+        ),
+      )
+      .mockResolvedValue(
+        new Response(
+          createEspnFeedXml(
+            createEspnItemXml({
+              link: "https://www.espn.com/nba/story/_/id/48351111/nba-playoff-watch",
+              title: "Other headline",
+            }),
+          ),
+          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
+        ),
+      );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
+
+    expect(payload.items[0].summary).toBe("Headline-only feed item");
+    expect(payload.items[0].content).toBe("Headline-only feed item");
   });
 });

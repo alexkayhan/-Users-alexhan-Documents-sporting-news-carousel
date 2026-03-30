@@ -217,7 +217,7 @@ export function LiveStoryFeed() {
         throw new Error(
           isRecord(payload) && isNonEmptyString(payload.message)
             ? payload.message
-            : "Unable to load Reddit posts.",
+            : "Unable to load ESPN headlines.",
         );
       }
 
@@ -225,7 +225,7 @@ export function LiveStoryFeed() {
     } catch (error) {
       if (controller.signal.aborted && !signal?.aborted) {
         throw new Error(
-          "Loading Reddit posts timed out. Check your connection and try again.",
+          "Loading ESPN headlines timed out. Check your connection and try again.",
         );
       }
 
@@ -279,7 +279,7 @@ export function LiveStoryFeed() {
       const message =
         error instanceof Error
           ? error.message
-          : "Unable to load Reddit posts.";
+          : "Unable to load ESPN headlines.";
 
       setState((current) => ({
         ...current,
@@ -372,9 +372,9 @@ export function LiveStoryFeed() {
   if (state.status === "loading" && state.stories.length === 0) {
     return (
       <FeedState
-        eyebrow="Connecting To Reddit"
+        eyebrow="Connecting To ESPN RSS"
         title="Loading headlines"
-        description="Pulling the top Reddit posts from your selected sports communities."
+        description="Pulling the latest ESPN sports headlines into the carousel."
         counter="..."
         showSkeleton
       />
@@ -384,7 +384,7 @@ export function LiveStoryFeed() {
   if (state.status === "error" && state.stories.length === 0) {
     return (
       <FeedState
-        eyebrow="Reddit Feed Unavailable"
+        eyebrow="ESPN Feed Unavailable"
         title="We couldn't load sports headlines"
         description={state.message ?? "Try again in a moment."}
         counter="!"
@@ -401,7 +401,7 @@ export function LiveStoryFeed() {
       <FeedState
         eyebrow="No Headlines"
         title="No sports stories are available right now"
-        description="Reddit did not return any current top posts from the selected subreddits."
+        description="ESPN RSS did not return any current headlines for the selected sports."
         counter="0"
         actionLabel="Refresh"
         onAction={() => {
@@ -414,7 +414,7 @@ export function LiveStoryFeed() {
   return (
     <StoryFeed
       stories={state.stories}
-      eyebrow="Live Reddit Feed"
+      eyebrow="Live ESPN Feed"
       bookmarkedStoryIds={bookmarkedStoryIds}
       onToggleBookmark={toggleBookmark}
       nextPage={state.nextPage}

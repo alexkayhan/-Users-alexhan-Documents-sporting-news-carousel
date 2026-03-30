@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(
-      { message: "Unexpected error while loading Reddit posts." },
+      { message: "Unexpected error while loading ESPN headlines." },
       {
         status: 500,
       },

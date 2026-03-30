@@ -94,7 +94,7 @@ describe("LiveStoryFeed", () => {
 
     expect(
       screen.getByText(
-        "Loading Reddit posts timed out. Check your connection and try again.",
+        "Loading ESPN headlines timed out. Check your connection and try again.",
       ),
     ).toBeInTheDocument();
   });
@@ -124,7 +124,7 @@ describe("LiveStoryFeed", () => {
     ).not.toHaveLength(0);
   });
 
-  it("registers a 6 hour refresh interval for reloading top threads", async () => {
+  it("registers a 6 hour refresh interval for reloading ESPN headlines", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -383,10 +383,13 @@ describe("LiveStoryFeed", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ message: "Reddit timed out while loading top posts." }), {
+        new Response(
+          JSON.stringify({ message: "ESPN RSS timed out while loading headlines." }),
+          {
           status: 504,
           headers: { "Content-Type": "application/json" },
-        }),
+          },
+        ),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify(successPayload), {

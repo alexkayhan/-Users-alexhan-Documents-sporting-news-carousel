@@ -195,8 +195,8 @@ export function StoryDetailDialog({
             {contentText}
           </p>
           <p id={noteId} className="story-detail__note">
-            This preview comes from the Reddit post data and may be abbreviated.
-            Open the original thread for the full discussion.
+            This preview comes from ESPN's RSS feed and may be abbreviated.
+            Open the original ESPN story for the full article.
           </p>
 
           <a
