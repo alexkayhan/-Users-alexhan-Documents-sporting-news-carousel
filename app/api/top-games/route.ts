@@ -10,7 +10,7 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const topGames = await fetchTopGames(5);
+    const topGames = await fetchTopGames(10);
 
     return NextResponse.json(topGames, {
       headers: {

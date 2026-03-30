@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   formatTopGameStartTime,
   formatScoreSummary,
@@ -98,6 +98,55 @@ export function TopGamesBar() {
     items: [],
     message: null,
   });
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    function updateScrollState() {
+      const rail = railRef.current;
+
+      if (!rail) {
+        setCanScrollLeft(false);
+        setCanScrollRight(false);
+        return;
+      }
+
+      const maxScrollLeft = rail.scrollWidth - rail.clientWidth;
+      setCanScrollLeft(rail.scrollLeft > 4);
+      setCanScrollRight(maxScrollLeft - rail.scrollLeft > 4);
+    }
+
+    updateScrollState();
+
+    const rail = railRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    rail.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+
+    return () => {
+      rail.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [state.items.length, state.status]);
+
+  function scrollRail(direction: "left" | "right") {
+    const rail = railRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const amount = Math.max(rail.clientWidth * 0.82, 280);
+    rail.scrollBy({
+      left: direction === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -170,34 +219,54 @@ export function TopGamesBar() {
     };
   }, []);
 
-  const loadingItems = useMemo(() => Array.from({ length: 5 }), []);
+  const loadingItems = useMemo(() => Array.from({ length: 10 }), []);
 
   return (
     <section className="top-games-bar" aria-label="Top DraftKings games">
       <div className="top-games-bar__inner">
         <div className="top-games-bar__title">
-          <p className="top-games-bar__eyebrow">Top DraftKings Games</p>
+          <p className="top-games-bar__eyebrow">Top 10 DraftKings Games</p>
           <p className="top-games-bar__subcopy">via ESPN live odds board</p>
         </div>
 
         <div className="top-games-bar__rail">
+          <button
+            type="button"
+            className="top-games-bar__scroll-button"
+            aria-label="Scroll top games left"
+            onClick={() => scrollRail("left")}
+            disabled={!canScrollLeft}
+          >
+            ←
+          </button>
+
           {state.status === "loading" ? (
-            <div className="top-games-bar__items" aria-hidden="true">
+            <div className="top-games-bar__items" aria-hidden="true" ref={railRef}>
               {loadingItems.map((_, index) => (
                 <div className="top-game-chip top-game-chip--loading" key={index} />
               ))}
             </div>
           ) : state.items.length > 0 ? (
-            <div className="top-games-bar__items">
+            <div className="top-games-bar__items" ref={railRef}>
               {state.items.map((game) => (
                 <GameChip game={game} key={game.id} />
               ))}
             </div>
           ) : (
-            <div className="top-games-bar__empty" role="status">
+            <div className="top-games-bar__empty" role="status" ref={railRef}>
               {state.message ?? "DraftKings board unavailable right now."}
             </div>
           )}
+
+          <button
+            type="button"
+            className="top-games-bar__scroll-button"
+            aria-label="Scroll top games right"
+            onClick={() => scrollRail("right")}
+            disabled={!canScrollRight}
+          >
+            →
+          </button>
         </div>
       </div>
     </section>

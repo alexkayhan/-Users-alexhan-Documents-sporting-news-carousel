@@ -312,7 +312,7 @@ function normalizeTopGame(
 
 export function parseTopGamesFromEspnOddsHtml(
   html: string,
-  limit = 5,
+  limit = 10,
 ): TopGamesResponse {
   const bootstrappedPayloadMatch = html.match(
     /window\['__espnfitt__'\]=([\s\S]+?);<\/script>/,
@@ -390,7 +390,7 @@ export function parseTopGamesFromEspnOddsHtml(
   };
 }
 
-export async function fetchTopGames(limit = 5) {
+export async function fetchTopGames(limit = 10) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort("timeout"), TOP_GAMES_REQUEST_TIMEOUT_MS);
 

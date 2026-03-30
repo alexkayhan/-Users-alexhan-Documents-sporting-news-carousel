@@ -119,20 +119,47 @@ select {
 }
 
 .top-games-bar__rail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
   min-width: 0;
   flex: 1 1 auto;
+  gap: 0.55rem;
 }
 
 .top-games-bar__items {
   display: flex;
   gap: 0.75rem;
   overflow-x: auto;
-  padding-bottom: 0.1rem;
+  padding: 0 0.15rem 0.1rem;
   scrollbar-width: none;
+  scroll-behavior: smooth;
 }
 
 .top-games-bar__items::-webkit-scrollbar {
   display: none;
+}
+
+.top-games-bar__scroll-button {
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(124, 226, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(8, 21, 34, 0.9);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(18px);
+}
+
+.top-games-bar__scroll-button:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .top-game-chip {
@@ -233,6 +260,7 @@ select {
 }
 
 .top-games-bar__empty {
+  min-width: 0;
   padding: 0.8rem 1rem;
   border: 1px solid rgba(124, 226, 255, 0.12);
   border-radius: 1rem;
@@ -954,6 +982,7 @@ select {
 
 @media (hover: hover) and (pointer: fine) {
   .top-game-chip--link,
+  .top-games-bar__scroll-button,
   .feed-controls__button,
   .story-card__open,
   .story-media__audio-toggle,
@@ -970,6 +999,7 @@ select {
   }
 
   .top-game-chip--link:hover,
+  .top-games-bar__scroll-button:hover:not(:disabled),
   .feed-controls__button:hover,
   .story-card.is-active .story-card__open:hover,
   .story-media__audio-toggle:hover,
@@ -985,6 +1015,7 @@ select {
     filter: brightness(1.04);
   }
 
+  .top-games-bar__scroll-button:hover:not(:disabled),
   .feed-controls__button:hover,
   .story-media__audio-toggle:hover,
   .story-detail__icon-button:hover,
