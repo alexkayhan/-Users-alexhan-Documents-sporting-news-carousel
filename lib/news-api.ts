@@ -668,11 +668,38 @@ export async function fetchSportsStories({
   const allRequestsFailed = results.every((result) => result.status === "rejected");
 
   if (allRequestsFailed) {
-    const firstFailure = results.find((result) => result.status === "rejected");
+    const rejectedFailures = results.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    const firstFailure = rejectedFailures[0];
+
+    const allFailuresAreAccessBlocks = rejectedFailures.every((result) => {
+      return (
+        result.reason instanceof NewsApiRequestError &&
+        (result.reason.status === 401 ||
+          result.reason.status === 403 ||
+          result.reason.status === 429)
+      );
+    });
+
+    if (allFailuresAreAccessBlocks) {
+      const startIndex = (normalizedPage - 1) * normalizedPageSize;
+      const items = stories.slice(startIndex, startIndex + normalizedPageSize);
+      const totalResults = stories.length;
+      const hasMore = startIndex + items.length < totalResults;
+
+      return {
+        items,
+        page: normalizedPage,
+        pageSize: normalizedPageSize,
+        totalResults,
+        hasMore,
+        nextPage: hasMore ? normalizedPage + 1 : null,
+      };
+    }
 
     if (
       firstFailure &&
-      firstFailure.status === "rejected" &&
       firstFailure.reason instanceof NewsApiRequestError
     ) {
       throw firstFailure.reason;

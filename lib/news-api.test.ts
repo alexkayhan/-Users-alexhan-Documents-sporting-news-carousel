@@ -398,6 +398,33 @@ describe("fetchSportsStories", () => {
     } satisfies Partial<NewsApiRequestError>);
   });
 
+  it("returns fallback subreddit cards when every reddit request is access-blocked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("blocked", {
+          status: 403,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
+    );
+
+    const payload = await fetchSportsStories({ page: 1, pageSize: 6 });
+
+    expect(payload.items).toHaveLength(6);
+    expect(payload.items.map((story) => story.source)).toEqual([
+      "r/nfl",
+      "r/nba",
+      "r/baseball",
+      "r/hockey",
+      "r/cfb",
+      "r/collegebasketball",
+    ]);
+    expect(payload.items[0].headline).toContain("r/nfl");
+    expect(payload.items[0].url).toBe("https://www.reddit.com/r/nfl/");
+    expect(payload.items[3].url).toBe("https://www.reddit.com/r/hockey/");
+  });
+
   it("keeps all subreddit slots by filling failed sources with a fallback card", async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
