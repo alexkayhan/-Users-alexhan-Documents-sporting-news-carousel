@@ -47,6 +47,20 @@ function createEspnFeedXml(itemXml: string) {
     </rss>`;
 }
 
+function createEspnArticleHtml(imageUrl?: string | null) {
+  return `<!doctype html>
+    <html>
+      <head>
+        ${
+          imageUrl
+            ? `<meta property="og:image" content="${imageUrl}" />`
+            : ""
+        }
+      </head>
+      <body>ESPN article</body>
+    </html>`;
+}
+
 describe("sanitizeSummary", () => {
   it("normalizes whitespace and strips markup from ESPN text", () => {
     expect(sanitizeSummary("  Big   game <b>update</b>\n\n tonight ")).toBe(
@@ -129,10 +143,11 @@ describe("buildMockStoriesResponse", () => {
 
 describe("fetchSportsStories", () => {
   it("returns one top ESPN story per configured feed in order", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/espn/rss/nfl/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               author: "Courtney Cronin",
@@ -144,10 +159,11 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/nba/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               author: "ESPN Staff",
@@ -157,23 +173,26 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/mlb/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               author: null,
-              description: "World Series contender tiers: How far away from winning it all is your favorite MLB team?",
+              description:
+                "World Series contender tiers: How far away from winning it all is your favorite MLB team?",
               link: "https://www.espn.com/mlb/story/_/id/48350001/world-series-contender-tiers",
               title: "World Series contender tiers",
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/nhl/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               description: "Guide to all 15 games on Showdown Saturday.",
@@ -182,10 +201,11 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/ncf/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               description: "Ranking college football coaches and teams that are likely to improve in 2026.",
@@ -194,10 +214,11 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/ncb/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               description: "Four teams will play for it all next weekend.",
@@ -206,8 +227,53 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      );
+        );
+      }
+
+      if (url.includes("/nfl/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0327/r1634817_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      if (url.includes("/nba/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636001_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      if (url.includes("/mlb/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636002_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      if (url.includes("/nhl/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636003_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      if (url.includes("/college-football/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636004_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      if (url.includes("/mens-college-basketball/story/")) {
+        return new Response(
+          createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636005_1296x729_16-9.jpg"),
+          { status: 200, headers: { "Content-Type": "text/html" } },
+        );
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    });
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -236,41 +302,43 @@ describe("fetchSportsStories", () => {
       tag: "Baseball",
       author: null,
     });
-    expect(payload.items[3].image.src).toBe("/mock-images/hockey-glove-save.svg");
-    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(payload.items[0].image.src).toBe(
+      "https://a2.espncdn.com/photo/2026/0327/r1634817_1296x729_16-9.jpg",
+    );
+    expect(payload.items[3].image.src).toBe(
+      "https://a2.espncdn.com/photo/2026/0330/r1636003_1296x729_16-9.jpg",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(12);
   });
 
   it("falls back to the sport section when one ESPN feed is unavailable", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          createEspnFeedXml(
-            createEspnItemXml({
-              link: "https://www.espn.com/nfl/story/_/id/48313813/oregon-kenyon-sadiq",
-              title: "NFL story",
-            }),
-          ),
-          { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response("blocked", {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/espn/rss/nba/news")) {
+        return new Response("blocked", {
           status: 503,
           headers: { "Content-Type": "text/plain" },
-        }),
-      )
-      .mockResolvedValue(
-        new Response(
+        });
+      }
+
+      if (url.includes("/espn/rss/")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
-              link: "https://www.espn.com/mlb/story/_/id/48350001/world-series-contender-tiers",
+              link: `https://www.espn.com/story/_/id/${Math.random()}/fallback-safe-story`,
               title: "Fallback-safe story",
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
+        );
+      }
+
+      return new Response(
+        createEspnArticleHtml("https://a2.espncdn.com/photo/2026/0330/r1636006_1296x729_16-9.jpg"),
+        { status: 200, headers: { "Content-Type": "text/html" } },
       );
+    });
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -286,10 +354,11 @@ describe("fetchSportsStories", () => {
   });
 
   it("uses the headline when the RSS item does not include a description", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/espn/rss/nfl/news")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               description: null,
@@ -298,10 +367,11 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      )
-      .mockResolvedValue(
-        new Response(
+        );
+      }
+
+      if (url.includes("/espn/rss/")) {
+        return new Response(
           createEspnFeedXml(
             createEspnItemXml({
               link: "https://www.espn.com/nba/story/_/id/48351111/nba-playoff-watch",
@@ -309,8 +379,14 @@ describe("fetchSportsStories", () => {
             }),
           ),
           { status: 200, headers: { "Content-Type": "application/rss+xml" } },
-        ),
-      );
+        );
+      }
+
+      return new Response(createEspnArticleHtml(null), {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    });
 
     vi.stubGlobal("fetch", fetchMock);
 
@@ -318,5 +394,6 @@ describe("fetchSportsStories", () => {
 
     expect(payload.items[0].summary).toBe("Headline-only feed item");
     expect(payload.items[0].content).toBe("Headline-only feed item");
+    expect(payload.items[0].image.src).toBe("/mock-images/football-breakaway.svg");
   });
 });

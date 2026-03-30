@@ -168,6 +168,30 @@ function extractRssItems(xml: string) {
   return Array.from(xml.matchAll(/<item\b[\s\S]*?<\/item>/gi), (match) => match[0]);
 }
 
+function extractMetaContent(html: string, attributeName: "property" | "name", attributeValue: string) {
+  const attributePattern = escapeRegex(attributeValue);
+  const metaPatterns = [
+    new RegExp(
+      `<meta[^>]*${attributeName}=["']${attributePattern}["'][^>]*content=["']([^"']+)["'][^>]*>`,
+      "i",
+    ),
+    new RegExp(
+      `<meta[^>]*content=["']([^"']+)["'][^>]*${attributeName}=["']${attributePattern}["'][^>]*>`,
+      "i",
+    ),
+  ];
+
+  for (const pattern of metaPatterns) {
+    const match = html.match(pattern);
+
+    if (match?.[1]) {
+      return readTrimmedString(decodeHtmlEntities(match[1]));
+    }
+  }
+
+  return null;
+}
+
 export function inferStoryTag(article: {
   title?: string | null;
   description?: string | null;
@@ -330,10 +354,45 @@ export function buildMockStoriesResponse({
   };
 }
 
-function mapEspnItemToStory(
+async function fetchEspnArticleImage(storyUrl: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort("timeout");
+  }, ESPN_REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(storyUrl, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "sporting-news-carousel/1.0 (+https://vercel.com)",
+      },
+      next: {
+        revalidate: ESPN_REVALIDATE_SECONDS,
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const articleHtml = await response.text();
+    const ogImage =
+      extractMetaContent(articleHtml, "property", "og:image") ??
+      extractMetaContent(articleHtml, "name", "twitter:image");
+
+    return isValidHttpUrl(ogImage) ? ogImage : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function mapEspnItemToStory(
   itemXml: string,
   definition: EspnRssSourceDefinition,
-): Story | null {
+): Promise<Story | null> {
   const headline = normalizeFeedText(extractXmlText(itemXml, "title"));
   const description = normalizeFeedText(extractXmlText(itemXml, "description"), true);
   const link = normalizeStoryUrl(normalizeFeedText(extractXmlText(itemXml, "link")));
@@ -352,6 +411,7 @@ function mapEspnItemToStory(
 
   const summary = sanitizeSummary(description || headline);
   const fallbackSrc = SPORT_FALLBACK_IMAGES[definition.defaultTag];
+  const articleImageSrc = await fetchEspnArticleImage(link);
 
   return {
     id: createStoryId(link),
@@ -364,7 +424,7 @@ function mapEspnItemToStory(
     tag: definition.defaultTag,
     url: link,
     image: {
-      src: fallbackSrc,
+      src: articleImageSrc ?? fallbackSrc,
       alt: headline,
       fallbackSrc,
     },
@@ -372,12 +432,12 @@ function mapEspnItemToStory(
   };
 }
 
-function normalizeEspnRssFeed(
+async function normalizeEspnRssFeed(
   feedXml: string,
   definition: EspnRssSourceDefinition,
-): Story | null {
+): Promise<Story | null> {
   for (const itemXml of extractRssItems(feedXml)) {
-    const story = mapEspnItemToStory(itemXml, definition);
+    const story = await mapEspnItemToStory(itemXml, definition);
 
     if (story) {
       return story;
@@ -437,7 +497,7 @@ async function fetchEspnRssStory(definition: EspnRssSourceDefinition) {
     }
 
     const feedXml = await response.text();
-    const story = normalizeEspnRssFeed(feedXml, definition);
+    const story = await normalizeEspnRssFeed(feedXml, definition);
 
     return story ?? buildUnavailableEspnStory(definition);
   } catch (error) {

@@ -292,7 +292,7 @@ select {
 }
 
 .feed-shell {
-  --feed-top-padding: calc(var(--top-games-bar-total-height) + 2.2rem);
+  --feed-top-padding: calc(var(--top-games-bar-total-height) + 3rem);
   --feed-bottom-padding: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
   --card-width: min(29rem, calc(100vw - 2.5rem));
   --card-height: calc(100dvh - var(--feed-top-padding) - var(--feed-bottom-padding));
@@ -398,7 +398,8 @@ select {
   transition:
     filter 220ms ease,
     background-color 220ms ease,
-    border-color 220ms ease;
+    border-color 220ms ease,
+    box-shadow 220ms ease;
   will-change: filter;
 }
 
@@ -990,6 +991,22 @@ select {
   .feed-state__button:hover,
   .feed-status--button:hover {
     transform: translateY(-1px);
+  }
+
+  .story-card:hover .story-card__surface {
+    border-color: rgba(124, 226, 255, 0.3);
+    box-shadow:
+      0 0 0 1px rgba(124, 226, 255, 0.16),
+      0 0 28px rgba(124, 226, 255, 0.16),
+      0 26px 64px rgba(0, 0, 0, 0.34);
+  }
+
+  .story-card.is-active:hover .story-card__surface {
+    border-color: rgba(124, 226, 255, 0.4);
+    box-shadow:
+      0 0 0 1px rgba(124, 226, 255, 0.2),
+      0 0 32px rgba(124, 226, 255, 0.22),
+      0 30px 70px rgba(0, 0, 0, 0.48);
   }
 }
 
