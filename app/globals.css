@@ -292,7 +292,7 @@ select {
 }
 
 .feed-shell {
-  --feed-top-padding: calc(var(--top-games-bar-total-height) + 1.5rem);
+  --feed-top-padding: calc(var(--top-games-bar-total-height) + 2.2rem);
   --feed-bottom-padding: calc(env(safe-area-inset-bottom, 0px) + 5.25rem);
   --card-width: min(29rem, calc(100vw - 2.5rem));
   --card-height: calc(100dvh - var(--feed-top-padding) - var(--feed-bottom-padding));
@@ -949,6 +949,48 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0.78;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .top-game-chip--link,
+  .feed-controls__button,
+  .story-card__open,
+  .story-media__audio-toggle,
+  .story-detail__icon-button,
+  .story-detail__link,
+  .feed-state__button,
+  .feed-status--button {
+    transition:
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease,
+      transform 180ms ease,
+      filter 180ms ease;
+  }
+
+  .top-game-chip--link:hover,
+  .feed-controls__button:hover,
+  .story-card.is-active .story-card__open:hover,
+  .story-media__audio-toggle:hover,
+  .story-detail__icon-button:hover,
+  .story-detail__link:hover,
+  .feed-state__button:hover,
+  .feed-status--button:hover {
+    box-shadow:
+      0 0 0 1px rgba(124, 226, 255, 0.22),
+      0 0 22px rgba(124, 226, 255, 0.24),
+      0 10px 28px rgba(0, 0, 0, 0.28);
+    border-color: rgba(124, 226, 255, 0.34);
+    filter: brightness(1.04);
+  }
+
+  .feed-controls__button:hover,
+  .story-media__audio-toggle:hover,
+  .story-detail__icon-button:hover,
+  .feed-state__button:hover,
+  .feed-status--button:hover {
+    transform: translateY(-1px);
+  }
 }
 
 @keyframes shimmer {
