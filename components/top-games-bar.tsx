@@ -80,7 +80,8 @@ function writeTopGamesCache(payload: TopGamesResponse, currentDateKey = getTopGa
 }
 
 function buildAccessibleGameLabel(game: TopGame) {
-  const baseLabel = `${game.league}. ${game.away.displayName} at ${game.home.displayName}. ${formatSpreadSummary(game)}.`;
+  const spreadSummary = formatSpreadSummary(game);
+  const baseLabel = `${game.league}. ${game.away.displayName} at ${game.home.displayName}.${game.status.state === "post" ? "" : ` ${spreadSummary}.`}`;
 
   if (game.status.state === "pre") {
     return `${baseLabel} Starts at ${formatTopGameStartTime(game.startTime)}.`;
@@ -108,6 +109,7 @@ function GameChip({
       : scoreSummary;
   const isFinal = shouldShowFinalScore(game);
   const label = buildAccessibleGameLabel(game);
+  const shouldShowSpread = game.status.state !== "post";
 
   const content = (
     <>
@@ -116,7 +118,9 @@ function GameChip({
         <p className="top-game-chip__teams">
           {game.away.abbreviation} @ {game.home.abbreviation}
         </p>
-        <p className="top-game-chip__spread">{formatSpreadSummary(game)}</p>
+        {shouldShowSpread ? (
+          <p className="top-game-chip__spread">{formatSpreadSummary(game)}</p>
+        ) : null}
       </div>
 
       <div
@@ -331,7 +335,7 @@ export function TopGamesBar() {
       <div className="top-games-bar__inner">
         <div className="top-games-bar__title">
           <p className="top-games-bar__eyebrow">DraftKings Games Today</p>
-          <p className="top-games-bar__subcopy">live board plus completed games from today</p>
+          <p className="top-games-bar__subcopy">MLB, NFL, NHL, NBA, D1 CBB, and D1 CFB via ESPN scoreboards</p>
         </div>
 
         <div className="top-games-bar__rail">
@@ -359,7 +363,7 @@ export function TopGamesBar() {
             </div>
           ) : (
             <div className="top-games-bar__empty" role="status" ref={railRef}>
-              {state.message ?? "DraftKings games are unavailable right now."}
+              {state.message ?? "Today’s DraftKings games are unavailable right now."}
             </div>
           )}
 

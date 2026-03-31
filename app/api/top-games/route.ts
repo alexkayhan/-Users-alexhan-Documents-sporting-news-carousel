@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   TopGamesRequestError,
-  collectCompletedTopGames,
-  fetchCompletedTopGamesForDate,
   fetchTopGames,
   getTopGamesDateKey,
-  mergeTopGamesWithCompleted,
 } from "@/lib/top-games";
-import type { TopGame, TopGamesResponse } from "@/lib/types";
+import type { TopGamesResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,13 +17,6 @@ let lastSuccessfulTopGames:
     }
   | null = null;
 
-let sameDayCompletedTopGames:
-  | {
-      dateKey: string;
-      items: TopGame[];
-    }
-  | null = null;
-
 export async function GET() {
   const currentDateKey = getTopGamesDateKey();
 
@@ -34,26 +24,8 @@ export async function GET() {
     lastSuccessfulTopGames = null;
   }
 
-  if (sameDayCompletedTopGames && sameDayCompletedTopGames.dateKey !== currentDateKey) {
-    sameDayCompletedTopGames = null;
-  }
-
   try {
-    const topGames = await fetchTopGames(10);
-    const completedTopGames = await fetchCompletedTopGamesForDate(currentDateKey, 10);
-    const mergedItems = mergeTopGamesWithCompleted(
-      topGames.items,
-      [...(sameDayCompletedTopGames?.items ?? []), ...completedTopGames],
-    );
-    const payload: TopGamesResponse = {
-      ...topGames,
-      items: mergedItems,
-    };
-
-    sameDayCompletedTopGames = {
-      dateKey: currentDateKey,
-      items: collectCompletedTopGames(mergedItems),
-    };
+    const payload = await fetchTopGames(10, currentDateKey);
     lastSuccessfulTopGames = {
       dateKey: currentDateKey,
       payload,
@@ -65,35 +37,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    const completedTopGames = await fetchCompletedTopGamesForDate(currentDateKey, 10).catch(
-      () => [],
-    );
-
-    if (completedTopGames.length > 0) {
-      const payload: TopGamesResponse = {
-        items: completedTopGames,
-        provider: "DraftKings",
-        source: "DraftKings live sportsbook board",
-        fetchedAt: new Date().toISOString(),
-      };
-
-      sameDayCompletedTopGames = {
-        dateKey: currentDateKey,
-        items: collectCompletedTopGames(completedTopGames),
-      };
-      lastSuccessfulTopGames = {
-        dateKey: currentDateKey,
-        payload,
-      };
-
-      return NextResponse.json(payload, {
-        headers: {
-          "Cache-Control": "no-store",
-          "X-Top-Games-Fallback": "same-day-finals",
-        },
-      });
-    }
-
     if (lastSuccessfulTopGames?.dateKey === currentDateKey) {
       return NextResponse.json(lastSuccessfulTopGames.payload, {
         headers: {
@@ -116,7 +59,7 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { message: "Unexpected error while loading the DraftKings live board." },
+      { message: "Unexpected error while loading today’s DraftKings games." },
       {
         status: 500,
         headers: {

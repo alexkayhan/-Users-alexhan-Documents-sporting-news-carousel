@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectCompletedTopGames,
-  parseCompletedTopGamesFromEspnScoreboardPayload,
+  parseTopGamesFromEspnScoreboardPayload,
   formatTopGameStartTime,
   formatScoreSummary,
   formatSpreadSummary,
@@ -301,6 +301,144 @@ function buildEspnCompletedScoreboardPayload() {
   };
 }
 
+function buildEspnTopGamesScoreboardPayload() {
+  return {
+    leagues: [
+      {
+        abbreviation: "NBA",
+      },
+    ],
+    events: [
+      {
+        id: "401810946",
+        date: "2026-03-31T02:00:00.000Z",
+        links: [
+          {
+            rel: ["gamecast", "desktop", "event"],
+            href: "https://www.espn.com/nba/game/_/gameId/401810946",
+          },
+        ],
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: "away",
+                score: "112",
+                team: {
+                  abbreviation: "PHI",
+                  displayName: "Philadelphia 76ers",
+                },
+              },
+              {
+                homeAway: "home",
+                score: "114",
+                team: {
+                  abbreviation: "MIA",
+                  displayName: "Miami Heat",
+                },
+              },
+            ],
+            odds: [
+              {
+                provider: {
+                  name: "Draft Kings",
+                },
+                pointSpread: {
+                  away: {
+                    close: {
+                      line: "+1.5",
+                      odds: "-105",
+                    },
+                  },
+                  home: {
+                    close: {
+                      line: "-1.5",
+                      odds: "-115",
+                    },
+                  },
+                },
+              },
+            ],
+            status: {
+              displayClock: "1:23",
+              period: 4,
+              type: {
+                state: "in",
+                completed: false,
+                detail: "4th Quarter 1:23",
+                shortDetail: "Q4 1:23",
+              },
+            },
+          },
+        ],
+      },
+      {
+        id: "401810947",
+        date: "2026-03-31T04:30:00.000Z",
+        links: [
+          {
+            rel: ["gamecast", "desktop", "event"],
+            href: "https://www.espn.com/nba/game/_/gameId/401810947",
+          },
+        ],
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: "away",
+                score: null,
+                team: {
+                  abbreviation: "BOS",
+                  displayName: "Boston Celtics",
+                },
+              },
+              {
+                homeAway: "home",
+                score: null,
+                team: {
+                  abbreviation: "ATL",
+                  displayName: "Atlanta Hawks",
+                },
+              },
+            ],
+            odds: [
+              {
+                provider: {
+                  name: "Draft Kings",
+                },
+                pointSpread: {
+                  away: {
+                    close: {
+                      line: "-2.5",
+                      odds: "-110",
+                    },
+                  },
+                  home: {
+                    close: {
+                      line: "+2.5",
+                      odds: "-110",
+                    },
+                  },
+                },
+              },
+            ],
+            status: {
+              displayClock: "0:00",
+              period: 0,
+              type: {
+                state: "pre",
+                completed: false,
+                detail: "Scheduled",
+                shortDetail: "Scheduled",
+              },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe("parseTopGamesFromDraftKingsLivePayload", () => {
   it("normalizes scheduled, live, and final DraftKings games", () => {
     const payload = parseTopGamesFromDraftKingsLivePayload(
@@ -373,7 +511,7 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
   });
 
   it("parses completed ESPN scoreboard games into final chips", () => {
-    const [game] = parseCompletedTopGamesFromEspnScoreboardPayload(
+    const [game] = parseTopGamesFromEspnScoreboardPayload(
       buildEspnCompletedScoreboardPayload(),
       "MLB",
     );
@@ -398,6 +536,45 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
     });
   });
 
+  it("parses ESPN scoreboard games with DraftKings spreads for live and scheduled matchups", () => {
+    const [liveGame, scheduledGame] = parseTopGamesFromEspnScoreboardPayload(
+      buildEspnTopGamesScoreboardPayload(),
+      "NBA",
+    );
+
+    expect(liveGame).toMatchObject({
+      provider: "ESPN",
+      league: "NBA",
+      status: {
+        state: "in",
+        shortDetail: "Q4 1:23",
+      },
+      away: {
+        abbreviation: "PHI",
+        spread: "+1.5",
+      },
+      home: {
+        abbreviation: "MIA",
+        spread: "-1.5",
+      },
+    });
+
+    expect(scheduledGame).toMatchObject({
+      status: {
+        state: "pre",
+        shortDetail: "Scheduled",
+      },
+      away: {
+        abbreviation: "BOS",
+        spread: "-2.5",
+      },
+      home: {
+        abbreviation: "ATL",
+        spread: "+2.5",
+      },
+    });
+  });
+
   it("throws when the DraftKings payload is missing core arrays", () => {
     expect(() =>
       parseTopGamesFromDraftKingsLivePayload(
@@ -415,7 +592,7 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
       5,
     ).items;
 
-    const [espnCompletedGame] = parseCompletedTopGamesFromEspnScoreboardPayload(
+    const [espnCompletedGame] = parseTopGamesFromEspnScoreboardPayload(
       buildEspnCompletedScoreboardPayload(),
       "MLB",
     );
