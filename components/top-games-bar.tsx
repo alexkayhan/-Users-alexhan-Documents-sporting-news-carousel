@@ -327,11 +327,11 @@ export function TopGamesBar() {
   const loadingItems = useMemo(() => Array.from({ length: 10 }), []);
 
   return (
-    <section className="top-games-bar" aria-label="DraftKings live games">
+    <section className="top-games-bar" aria-label="DraftKings games today">
       <div className="top-games-bar__inner">
         <div className="top-games-bar__title">
-          <p className="top-games-bar__eyebrow">DraftKings Live Games</p>
-          <p className="top-games-bar__subcopy">via DraftKings live sportsbook board</p>
+          <p className="top-games-bar__eyebrow">DraftKings Games Today</p>
+          <p className="top-games-bar__subcopy">live board plus completed games from today</p>
         </div>
 
         <div className="top-games-bar__rail">
@@ -359,7 +359,7 @@ export function TopGamesBar() {
             </div>
           ) : (
             <div className="top-games-bar__empty" role="status" ref={railRef}>
-              {state.message ?? "DraftKings live board unavailable right now."}
+              {state.message ?? "DraftKings games are unavailable right now."}
             </div>
           )}
 

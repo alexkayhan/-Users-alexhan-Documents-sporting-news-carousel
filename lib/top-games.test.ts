@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  collectCompletedTopGames,
   formatTopGameStartTime,
   formatScoreSummary,
   formatSpreadSummary,
   getTopGameLink,
+  mergeTopGamesWithCompleted,
   parseTopGamesFromDraftKingsLivePayload,
   shouldShowFinalScore,
 } from "@/lib/top-games";
@@ -326,5 +328,46 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
         5,
       ),
     ).toThrow("Unable to read the DraftKings live board.");
+  });
+
+  it("appends same-day completed games after the current board without duplicating them", () => {
+    const [scheduledGame, liveGame, finalGame] = parseTopGamesFromDraftKingsLivePayload(
+      buildDraftKingsLivePayload(),
+      5,
+    ).items;
+
+    const cachedCompletedGame = {
+      ...finalGame,
+      id: "game-final-older",
+      away: {
+        ...finalGame.away,
+        abbreviation: "DEN",
+        displayName: "Denver Nuggets",
+        score: "111",
+      },
+      home: {
+        ...finalGame.home,
+        abbreviation: "LAL",
+        displayName: "Los Angeles Lakers",
+        score: "109",
+      },
+    };
+
+    const mergedItems = mergeTopGamesWithCompleted(
+      [scheduledGame, liveGame, finalGame],
+      [finalGame, cachedCompletedGame],
+    );
+
+    expect(mergedItems.map((item) => item.id)).toEqual([
+      "game-pre",
+      "game-live",
+      "game-final",
+      "game-final-older",
+    ]);
+
+    expect(collectCompletedTopGames(mergedItems).map((item) => item.id)).toEqual([
+      "game-final",
+      "game-final-older",
+    ]);
   });
 });

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   TopGamesRequestError,
+  collectCompletedTopGames,
   fetchTopGames,
   getTopGamesDateKey,
+  mergeTopGamesWithCompleted,
 } from "@/lib/top-games";
-import type { TopGamesResponse } from "@/lib/types";
+import type { TopGame, TopGamesResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +19,13 @@ let lastSuccessfulTopGames:
     }
   | null = null;
 
+let sameDayCompletedTopGames:
+  | {
+      dateKey: string;
+      items: TopGame[];
+    }
+  | null = null;
+
 export async function GET() {
   const currentDateKey = getTopGamesDateKey();
 
@@ -24,14 +33,31 @@ export async function GET() {
     lastSuccessfulTopGames = null;
   }
 
+  if (sameDayCompletedTopGames && sameDayCompletedTopGames.dateKey !== currentDateKey) {
+    sameDayCompletedTopGames = null;
+  }
+
   try {
     const topGames = await fetchTopGames(10);
-    lastSuccessfulTopGames = {
-      dateKey: currentDateKey,
-      payload: topGames,
+    const mergedItems = mergeTopGamesWithCompleted(
+      topGames.items,
+      sameDayCompletedTopGames?.items ?? [],
+    );
+    const payload: TopGamesResponse = {
+      ...topGames,
+      items: mergedItems,
     };
 
-    return NextResponse.json(topGames, {
+    sameDayCompletedTopGames = {
+      dateKey: currentDateKey,
+      items: collectCompletedTopGames(mergedItems),
+    };
+    lastSuccessfulTopGames = {
+      dateKey: currentDateKey,
+      payload,
+    };
+
+    return NextResponse.json(payload, {
       headers: {
         "Cache-Control": "no-store",
       },

@@ -511,6 +511,47 @@ export function parseTopGamesFromDraftKingsLivePayload(
   };
 }
 
+export function collectCompletedTopGames(items: TopGame[]) {
+  const completedItems: TopGame[] = [];
+  const seenIds = new Set<string>();
+
+  for (const item of items) {
+    if (item.status.state !== "post" || seenIds.has(item.id)) {
+      continue;
+    }
+
+    seenIds.add(item.id);
+    completedItems.push(item);
+  }
+
+  return completedItems;
+}
+
+export function mergeTopGamesWithCompleted(currentItems: TopGame[], completedItems: TopGame[]) {
+  const mergedItems: TopGame[] = [];
+  const seenIds = new Set<string>();
+
+  for (const item of currentItems) {
+    if (seenIds.has(item.id)) {
+      continue;
+    }
+
+    seenIds.add(item.id);
+    mergedItems.push(item);
+  }
+
+  for (const item of completedItems) {
+    if (item.status.state !== "post" || seenIds.has(item.id)) {
+      continue;
+    }
+
+    seenIds.add(item.id);
+    mergedItems.push(item);
+  }
+
+  return mergedItems;
+}
+
 export async function fetchTopGames(limit = 10) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort("timeout"), TOP_GAMES_REQUEST_TIMEOUT_MS);
