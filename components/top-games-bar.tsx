@@ -5,20 +5,79 @@ import {
   formatTopGameStartTime,
   formatScoreSummary,
   formatSpreadSummary,
+  getTopGamesDateKey,
   getTopGameLink,
   isValidTopGamesResponse,
   shouldShowFinalScore,
 } from "@/lib/top-games";
-import type { TopGame } from "@/lib/types";
+import type { TopGame, TopGamesResponse } from "@/lib/types";
 
 type TopGamesBarState = {
   status: "loading" | "success" | "error";
   items: TopGame[];
   message: string | null;
+  dateKey: string | null;
 };
 
 const TOP_GAMES_REFRESH_INTERVAL_MS = 60_000;
 const TOP_GAMES_REQUEST_TIMEOUT_MS = 8_000;
+const TOP_GAMES_CACHE_KEY = "top-games-cache-v1";
+
+type StoredTopGamesCache = {
+  dateKey: string;
+  payload: TopGamesResponse;
+};
+
+function clearTopGamesCache() {
+  try {
+    window.localStorage.removeItem(TOP_GAMES_CACHE_KEY);
+  } catch {
+    // Ignore localStorage errors and continue without cache persistence.
+  }
+}
+
+function readTopGamesCache(currentDateKey = getTopGamesDateKey()) {
+  try {
+    const rawValue = window.localStorage.getItem(TOP_GAMES_CACHE_KEY);
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue) as StoredTopGamesCache;
+
+    if (
+      typeof parsedValue?.dateKey !== "string" ||
+      !isValidTopGamesResponse(parsedValue?.payload)
+    ) {
+      clearTopGamesCache();
+      return null;
+    }
+
+    if (parsedValue.dateKey !== currentDateKey) {
+      clearTopGamesCache();
+      return null;
+    }
+
+    return parsedValue;
+  } catch {
+    clearTopGamesCache();
+    return null;
+  }
+}
+
+function writeTopGamesCache(payload: TopGamesResponse, currentDateKey = getTopGamesDateKey()) {
+  try {
+    const storedValue: StoredTopGamesCache = {
+      dateKey: currentDateKey,
+      payload,
+    };
+
+    window.localStorage.setItem(TOP_GAMES_CACHE_KEY, JSON.stringify(storedValue));
+  } catch {
+    // Ignore localStorage errors and continue with in-memory state only.
+  }
+}
 
 function buildAccessibleGameLabel(game: TopGame) {
   const baseLabel = `${game.league}. ${game.away.displayName} at ${game.home.displayName}. ${formatSpreadSummary(game)}.`;
@@ -97,6 +156,7 @@ export function TopGamesBar() {
     status: "loading",
     items: [],
     message: null,
+    dateKey: null,
   });
   const railRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -150,8 +210,34 @@ export function TopGamesBar() {
 
   useEffect(() => {
     let ignore = false;
+    const initialDateKey = getTopGamesDateKey();
+    const cachedTopGames = readTopGamesCache(initialDateKey);
+
+    if (cachedTopGames) {
+      setState({
+        status: "success",
+        items: cachedTopGames.payload.items,
+        message: null,
+        dateKey: cachedTopGames.dateKey,
+      });
+    }
 
     async function loadTopGames() {
+      const currentDateKey = getTopGamesDateKey();
+
+      setState((current) => {
+        if (current.dateKey && current.dateKey !== currentDateKey) {
+          return {
+            status: "loading",
+            items: [],
+            message: null,
+            dateKey: null,
+          };
+        }
+
+        return current;
+      });
+
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => {
         controller.abort("timeout");
@@ -171,22 +257,24 @@ export function TopGamesBar() {
               "message" in payload &&
               typeof payload.message === "string"
               ? payload.message
-              : "Unable to load the DraftKings games board.",
+              : "Unable to load the DraftKings live board.",
           );
         }
 
         if (!isValidTopGamesResponse(payload)) {
-          throw new Error("Unable to read the DraftKings games board.");
+          throw new Error("Unable to read the DraftKings live board.");
         }
 
         if (ignore) {
           return;
         }
 
+        writeTopGamesCache(payload, currentDateKey);
         setState({
           status: "success",
           items: payload.items,
           message: null,
+          dateKey: currentDateKey,
         });
       } catch (error) {
         if (ignore) {
@@ -195,15 +283,32 @@ export function TopGamesBar() {
 
         const message =
           controller.signal.aborted && !ignore
-            ? "DraftKings board timed out."
+            ? "DraftKings live board timed out."
             : error instanceof Error
               ? error.message
-              : "Unable to load the DraftKings games board.";
+              : "Unable to load the DraftKings live board.";
+
+        const cachedTopGames = readTopGamesCache(currentDateKey);
 
         setState((current) => ({
-          status: current.items.length > 0 ? "success" : "error",
-          items: current.items,
-          message,
+          status:
+            (current.items.length > 0 && current.dateKey === currentDateKey) || cachedTopGames
+              ? "success"
+              : "error",
+          items:
+            current.items.length > 0 && current.dateKey === currentDateKey
+              ? current.items
+              : cachedTopGames?.payload.items ?? [],
+          message:
+            current.items.length > 0 && current.dateKey === currentDateKey
+              ? current.message
+              : cachedTopGames
+                ? null
+                : message,
+          dateKey:
+            current.items.length > 0 && current.dateKey === currentDateKey
+              ? current.dateKey
+              : cachedTopGames?.dateKey ?? null,
         }));
       } finally {
         window.clearTimeout(timeoutId);
@@ -222,11 +327,11 @@ export function TopGamesBar() {
   const loadingItems = useMemo(() => Array.from({ length: 10 }), []);
 
   return (
-    <section className="top-games-bar" aria-label="Top DraftKings games">
+    <section className="top-games-bar" aria-label="DraftKings live games">
       <div className="top-games-bar__inner">
         <div className="top-games-bar__title">
-          <p className="top-games-bar__eyebrow">Top 10 DraftKings Games</p>
-          <p className="top-games-bar__subcopy">via ESPN live odds board</p>
+          <p className="top-games-bar__eyebrow">DraftKings Live Games</p>
+          <p className="top-games-bar__subcopy">via DraftKings live sportsbook board</p>
         </div>
 
         <div className="top-games-bar__rail">
@@ -254,7 +359,7 @@ export function TopGamesBar() {
             </div>
           ) : (
             <div className="top-games-bar__empty" role="status" ref={railRef}>
-              {state.message ?? "DraftKings board unavailable right now."}
+              {state.message ?? "DraftKings live board unavailable right now."}
             </div>
           )}
 

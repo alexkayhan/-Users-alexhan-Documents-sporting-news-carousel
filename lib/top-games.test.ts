@@ -4,200 +4,254 @@ import {
   formatScoreSummary,
   formatSpreadSummary,
   getTopGameLink,
-  parseTopGamesFromEspnOddsHtml,
+  parseTopGamesFromDraftKingsLivePayload,
   shouldShowFinalScore,
 } from "@/lib/top-games";
 
-function buildTopOddsHtml() {
-  const payload = {
-    page: {
-      content: {
-        odds: {
-          providerName: "draftkings",
-          odds: [
-            {
-              displayValue: "NBA",
-              lines: [
-                {
-                  id: "game-pre",
-                  date: "2026-03-30T23:00:00.000Z",
-                  status: {
-                    type: {
-                      state: "pre",
-                      detail: "Mon, March 30th at 7:00 PM EDT",
-                      shortDetail: "7:00 PM",
-                    },
-                  },
-                  competitors: [
-                    {
-                      homeAway: "home",
-                      score: null,
-                      team: {
-                        abbreviation: "MIA",
-                        displayName: "Miami Heat",
-                      },
-                    },
-                    {
-                      homeAway: "away",
-                      score: null,
-                      team: {
-                        abbreviation: "PHI",
-                        displayName: "Philadelphia 76ers",
-                      },
-                    },
-                  ],
-                  odds: [
-                    {
-                      provider: {
-                        displayName: "DraftKings",
-                      },
-                      pointSpread: {
-                        home: {
-                          close: {
-                            line: "+2.5",
-                            odds: "-118",
-                          },
-                        },
-                        away: {
-                          close: {
-                            line: "-2.5",
-                            odds: "-102",
-                          },
-                        },
-                      },
-                    },
-                  ],
-                  links: [
-                    {
-                      rel: ["summary", "desktop", "event"],
-                      href: "/nba/game/_/gameId/game-pre",
-                    },
-                  ],
-                  gameOdd: {
-                    gameBetLink: "https://sportsbook.draftkings.com/gateway?event=game-pre",
-                  },
-                },
-                {
-                  id: "game-live",
-                  date: "2026-03-30T20:00:00.000Z",
-                  status: {
-                    type: {
-                      state: "in",
-                      detail: "Q3 04:21",
-                      shortDetail: "Q3 4:21",
-                    },
-                  },
-                  competitors: [
-                    {
-                      homeAway: "home",
-                      score: "82",
-                      team: {
-                        abbreviation: "ATL",
-                        displayName: "Atlanta Hawks",
-                      },
-                    },
-                    {
-                      homeAway: "away",
-                      score: "87",
-                      team: {
-                        abbreviation: "BOS",
-                        displayName: "Boston Celtics",
-                      },
-                    },
-                  ],
-                  odds: [
-                    {
-                      provider: {
-                        displayName: "DraftKings",
-                      },
-                      pointSpread: {
-                        home: {
-                          close: {
-                            line: "-2.5",
-                            odds: "-110",
-                          },
-                        },
-                        away: {
-                          close: {
-                            line: "+2.5",
-                            odds: "-110",
-                          },
-                        },
-                      },
-                    },
-                  ],
-                },
-                {
-                  id: "game-final",
-                  date: "2026-03-30T17:00:00.000Z",
-                  status: {
-                    type: {
-                      state: "post",
-                      completed: true,
-                      detail: "Final",
-                      shortDetail: "Final",
-                    },
-                  },
-                  competitors: [
-                    {
-                      homeAway: "home",
-                      score: 98,
-                      team: {
-                        abbreviation: "DAL",
-                        displayName: "Dallas Mavericks",
-                      },
-                    },
-                    {
-                      homeAway: "away",
-                      score: 102,
-                      team: {
-                        abbreviation: "MIN",
-                        displayName: "Minnesota Timberwolves",
-                      },
-                    },
-                  ],
-                  odds: [
-                    {
-                      provider: {
-                        displayName: "DraftKings",
-                      },
-                      pointSpread: {
-                        home: {
-                          close: {
-                            line: "+7.5",
-                            odds: "-102",
-                          },
-                        },
-                        away: {
-                          close: {
-                            line: "-7.5",
-                            odds: "-118",
-                          },
-                        },
-                      },
-                    },
-                  ],
-                  links: [
-                    {
-                      rel: ["summary", "desktop", "event"],
-                      href: "/nba/game/_/gameId/game-final",
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
+function buildDraftKingsLivePayload() {
+  return {
+    sections: [
+      {
+        id: "42648",
+        name: "NBA",
+        sortOrder: 100,
+        associatedData: {
+          seoIdentifier: "nba",
         },
       },
-    },
+    ],
+    events: [
+      {
+        id: "game-pre",
+        seoIdentifier: "phi-76ers-%40-mia-heat",
+        leagueId: "42648",
+        startEventDate: "2026-03-30T23:00:00.000Z",
+        status: "NOT_STARTED",
+        sortOrder: 1,
+        participants: [
+          {
+            id: "home-pre",
+            name: "Miami Heat",
+            venueRole: "Home",
+            metadata: {
+              shortName: "MIA",
+            },
+          },
+          {
+            id: "away-pre",
+            name: "Philadelphia 76ers",
+            venueRole: "Away",
+            metadata: {
+              shortName: "PHI",
+            },
+          },
+        ],
+        eventScore: {
+          mainScore: {
+            homeScore: null,
+            awayScore: null,
+          },
+        },
+      },
+      {
+        id: "game-live",
+        seoIdentifier: "bos-celtics-%40-atl-hawks",
+        leagueId: "42648",
+        startEventDate: "2026-03-30T20:00:00.000Z",
+        status: "STARTED",
+        sortOrder: 2,
+        liveGameState: {
+          period: "Q3",
+          gameTime: 261,
+        },
+        participants: [
+          {
+            id: "home-live",
+            name: "Atlanta Hawks",
+            venueRole: "Home",
+            metadata: {
+              shortName: "ATL",
+            },
+          },
+          {
+            id: "away-live",
+            name: "Boston Celtics",
+            venueRole: "Away",
+            metadata: {
+              shortName: "BOS",
+            },
+          },
+        ],
+        eventScore: {
+          mainScore: {
+            homeScore: "82",
+            awayScore: "87",
+          },
+        },
+      },
+      {
+        id: "game-final",
+        seoIdentifier: "min-timberwolves-%40-dal-mavericks",
+        leagueId: "42648",
+        startEventDate: "2026-03-30T17:00:00.000Z",
+        status: "FINAL",
+        sortOrder: 3,
+        participants: [
+          {
+            id: "home-final",
+            name: "Dallas Mavericks",
+            venueRole: "Home",
+            metadata: {
+              shortName: "DAL",
+            },
+          },
+          {
+            id: "away-final",
+            name: "Minnesota Timberwolves",
+            venueRole: "Away",
+            metadata: {
+              shortName: "MIN",
+            },
+          },
+        ],
+        eventScore: {
+          mainScore: {
+            homeScore: 98,
+            awayScore: 102,
+          },
+        },
+      },
+    ],
+    markets: [
+      {
+        id: "spread-pre",
+        eventId: "game-pre",
+        name: "Spread",
+        marketType: {
+          betOfferTypeId: 1,
+          name: "Spread",
+        },
+      },
+      {
+        id: "spread-live",
+        eventId: "game-live",
+        name: "Spread",
+        marketType: {
+          betOfferTypeId: 1,
+          name: "Spread",
+        },
+      },
+      {
+        id: "spread-final",
+        eventId: "game-final",
+        name: "Spread",
+        marketType: {
+          betOfferTypeId: 1,
+          name: "Spread",
+        },
+      },
+    ],
+    selections: [
+      {
+        id: "pre-away",
+        marketId: "spread-pre",
+        points: -2.5,
+        displayOdds: {
+          american: "-102",
+        },
+        outcomeType: "Away",
+        participants: [
+          {
+            name: "Philadelphia 76ers",
+            venueRole: "Away",
+          },
+        ],
+      },
+      {
+        id: "pre-home",
+        marketId: "spread-pre",
+        points: 2.5,
+        displayOdds: {
+          american: "-118",
+        },
+        outcomeType: "Home",
+        participants: [
+          {
+            name: "Miami Heat",
+            venueRole: "Home",
+          },
+        ],
+      },
+      {
+        id: "live-away",
+        marketId: "spread-live",
+        points: 2.5,
+        displayOdds: {
+          american: "-110",
+        },
+        outcomeType: "Away",
+        participants: [
+          {
+            name: "Boston Celtics",
+            venueRole: "Away",
+          },
+        ],
+      },
+      {
+        id: "live-home",
+        marketId: "spread-live",
+        points: -2.5,
+        displayOdds: {
+          american: "-110",
+        },
+        outcomeType: "Home",
+        participants: [
+          {
+            name: "Atlanta Hawks",
+            venueRole: "Home",
+          },
+        ],
+      },
+      {
+        id: "final-away",
+        marketId: "spread-final",
+        points: -7.5,
+        displayOdds: {
+          american: "-118",
+        },
+        outcomeType: "Away",
+        participants: [
+          {
+            name: "Minnesota Timberwolves",
+            venueRole: "Away",
+          },
+        ],
+      },
+      {
+        id: "final-home",
+        marketId: "spread-final",
+        points: 7.5,
+        displayOdds: {
+          american: "-102",
+        },
+        outcomeType: "Home",
+        participants: [
+          {
+            name: "Dallas Mavericks",
+            venueRole: "Home",
+          },
+        ],
+      },
+    ],
   };
-
-  return `<html><body><script>window['__espnfitt__']=${JSON.stringify(payload)};</script></body></html>`;
 }
 
-describe("parseTopGamesFromEspnOddsHtml", () => {
-  it("normalizes scheduled, live, and final DraftKings games from ESPN", () => {
-    const payload = parseTopGamesFromEspnOddsHtml(buildTopOddsHtml(), 5);
+describe("parseTopGamesFromDraftKingsLivePayload", () => {
+  it("normalizes scheduled, live, and final DraftKings games", () => {
+    const payload = parseTopGamesFromDraftKingsLivePayload(
+      buildDraftKingsLivePayload(),
+      5,
+    );
 
     expect(payload.provider).toBe("DraftKings");
     expect(payload.items).toHaveLength(3);
@@ -215,10 +269,9 @@ describe("parseTopGamesFromEspnOddsHtml", () => {
       },
       status: {
         state: "pre",
-        shortDetail: "7:00 PM",
+        shortDetail: "Scheduled",
       },
-      gameUrl: "https://sportsbook.draftkings.com/gateway?event=game-pre",
-      scoreboardUrl: "https://www.espn.com/nba/game/_/gameId/game-pre",
+      gameUrl: "https://sportsbook.draftkings.com/event/phi-76ers-%40-mia-heat/game-pre",
     });
 
     expect(payload.items[1]).toMatchObject({
@@ -245,8 +298,8 @@ describe("parseTopGamesFromEspnOddsHtml", () => {
   });
 
   it("supports the ticker formatting helpers", () => {
-    const [scheduledGame, liveGame, finalGame] = parseTopGamesFromEspnOddsHtml(
-      buildTopOddsHtml(),
+    const [scheduledGame, liveGame, finalGame] = parseTopGamesFromDraftKingsLivePayload(
+      buildDraftKingsLivePayload(),
       5,
     ).items;
 
@@ -260,13 +313,18 @@ describe("parseTopGamesFromEspnOddsHtml", () => {
       }),
     ).toContain("PDT");
     expect(getTopGameLink(finalGame)).toBe(
-      "https://www.espn.com/nba/game/_/gameId/game-final",
+      "https://sportsbook.draftkings.com/event/min-timberwolves-%40-dal-mavericks/game-final",
     );
   });
 
-  it("throws when the ESPN payload is missing", () => {
-    expect(() => parseTopGamesFromEspnOddsHtml("<html></html>", 5)).toThrow(
-      "Unable to locate the DraftKings odds payload.",
-    );
+  it("throws when the DraftKings payload is missing core arrays", () => {
+    expect(() =>
+      parseTopGamesFromDraftKingsLivePayload(
+        {
+          sections: [],
+        },
+        5,
+      ),
+    ).toThrow("Unable to read the DraftKings live board.");
   });
 });
