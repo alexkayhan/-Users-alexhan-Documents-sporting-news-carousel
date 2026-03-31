@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   collectCompletedTopGames,
+  parseCompletedTopGamesFromEspnScoreboardPayload,
   formatTopGameStartTime,
   formatScoreSummary,
   formatSpreadSummary,
@@ -248,6 +249,58 @@ function buildDraftKingsLivePayload() {
   };
 }
 
+function buildEspnCompletedScoreboardPayload() {
+  return {
+    leagues: [
+      {
+        abbreviation: "MLB",
+      },
+    ],
+    events: [
+      {
+        id: "401814700",
+        date: "2026-03-30T17:10:00.000Z",
+        links: [
+          {
+            rel: ["recap", "desktop", "event"],
+            href: "https://www.espn.com/mlb/recap/_/gameId/401814700",
+          },
+        ],
+        competitions: [
+          {
+            competitors: [
+              {
+                homeAway: "away",
+                score: "2",
+                team: {
+                  abbreviation: "NYY",
+                  displayName: "New York Yankees",
+                },
+              },
+              {
+                homeAway: "home",
+                score: "5",
+                team: {
+                  abbreviation: "BOS",
+                  displayName: "Boston Red Sox",
+                },
+              },
+            ],
+            status: {
+              type: {
+                state: "post",
+                completed: true,
+                detail: "Final",
+                shortDetail: "Final",
+              },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe("parseTopGamesFromDraftKingsLivePayload", () => {
   it("normalizes scheduled, live, and final DraftKings games", () => {
     const payload = parseTopGamesFromDraftKingsLivePayload(
@@ -319,6 +372,32 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
     );
   });
 
+  it("parses completed ESPN scoreboard games into final chips", () => {
+    const [game] = parseCompletedTopGamesFromEspnScoreboardPayload(
+      buildEspnCompletedScoreboardPayload(),
+      "MLB",
+    );
+
+    expect(game).toMatchObject({
+      league: "MLB",
+      provider: "ESPN",
+      status: {
+        state: "post",
+        isComplete: true,
+        shortDetail: "Final",
+      },
+      away: {
+        abbreviation: "NYY",
+        score: "2",
+      },
+      home: {
+        abbreviation: "BOS",
+        score: "5",
+      },
+      gameUrl: "https://www.espn.com/mlb/recap/_/gameId/401814700",
+    });
+  });
+
   it("throws when the DraftKings payload is missing core arrays", () => {
     expect(() =>
       parseTopGamesFromDraftKingsLivePayload(
@@ -336,38 +415,32 @@ describe("parseTopGamesFromDraftKingsLivePayload", () => {
       5,
     ).items;
 
-    const cachedCompletedGame = {
+    const [espnCompletedGame] = parseCompletedTopGamesFromEspnScoreboardPayload(
+      buildEspnCompletedScoreboardPayload(),
+      "MLB",
+    );
+
+    const duplicateCompletedGame = {
       ...finalGame,
-      id: "game-final-older",
-      away: {
-        ...finalGame.away,
-        abbreviation: "DEN",
-        displayName: "Denver Nuggets",
-        score: "111",
-      },
-      home: {
-        ...finalGame.home,
-        abbreviation: "LAL",
-        displayName: "Los Angeles Lakers",
-        score: "109",
-      },
+      id: "espn-duplicate-final",
+      provider: "ESPN" as const,
     };
 
     const mergedItems = mergeTopGamesWithCompleted(
       [scheduledGame, liveGame, finalGame],
-      [finalGame, cachedCompletedGame],
+      [duplicateCompletedGame, espnCompletedGame],
     );
 
     expect(mergedItems.map((item) => item.id)).toEqual([
-      "game-pre",
       "game-live",
+      "game-pre",
+      "espn-mlb-401814700",
       "game-final",
-      "game-final-older",
     ]);
 
     expect(collectCompletedTopGames(mergedItems).map((item) => item.id)).toEqual([
+      "espn-mlb-401814700",
       "game-final",
-      "game-final-older",
     ]);
   });
 });

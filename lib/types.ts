@@ -51,7 +51,7 @@ export type TopGameTeam = {
 export type TopGame = {
   id: string;
   league: string;
-  provider: "DraftKings";
+  provider: "DraftKings" | "ESPN";
   startTime: string;
   away: TopGameTeam;
   home: TopGameTeam;

@@ -3,9 +3,43 @@ import type { TopGame, TopGamesResponse, TopGameState, TopGameTeam } from "@/lib
 const DRAFTKINGS_LIVE_URL =
   "https://sportsbook-nash.draftkings.com/api/sportscontent/views/dkusnj/v1/live";
 const DRAFTKINGS_BASE_URL = "https://sportsbook.draftkings.com";
+const ESPN_BASE_URL = "https://www.espn.com";
 const TOP_GAMES_REQUEST_TIMEOUT_MS = 8000;
 const TOP_GAMES_SOURCE = "DraftKings live sportsbook board";
 export const TOP_GAMES_TIME_ZONE = "America/Los_Angeles";
+
+const ESPN_SCOREBOARD_CONFIGS = [
+  {
+    sport: "baseball",
+    leagueSlug: "mlb",
+    leagueAbbreviation: "MLB",
+  },
+  {
+    sport: "basketball",
+    leagueSlug: "nba",
+    leagueAbbreviation: "NBA",
+  },
+  {
+    sport: "hockey",
+    leagueSlug: "nhl",
+    leagueAbbreviation: "NHL",
+  },
+  {
+    sport: "basketball",
+    leagueSlug: "mens-college-basketball",
+    leagueAbbreviation: "NCAAM",
+  },
+  {
+    sport: "football",
+    leagueSlug: "nfl",
+    leagueAbbreviation: "NFL",
+  },
+  {
+    sport: "football",
+    leagueSlug: "college-football",
+    leagueAbbreviation: "NCAAF",
+  },
+] as const;
 
 type DraftKingsParticipant = {
   id?: string | number | null;
@@ -80,6 +114,57 @@ type DraftKingsLivePayload = {
   sections?: DraftKingsSection[] | null;
 };
 
+type EspnScoreboardCompetitor = {
+  homeAway?: string | null;
+  score?: string | number | null;
+  team?: {
+    abbreviation?: string | null;
+    displayName?: string | null;
+    shortDisplayName?: string | null;
+    name?: string | null;
+    location?: string | null;
+  } | null;
+};
+
+type EspnScoreboardCompetition = {
+  competitors?: EspnScoreboardCompetitor[] | null;
+  status?: {
+    type?: {
+      state?: string | null;
+      completed?: boolean | null;
+      detail?: string | null;
+      shortDetail?: string | null;
+    } | null;
+  } | null;
+};
+
+type EspnScoreboardEvent = {
+  id?: string | null;
+  date?: string | null;
+  shortName?: string | null;
+  competitions?: EspnScoreboardCompetition[] | null;
+  links?: Array<{
+    href?: string | null;
+    rel?: string[] | null;
+  }> | null;
+  status?: {
+    type?: {
+      state?: string | null;
+      completed?: boolean | null;
+      detail?: string | null;
+      shortDetail?: string | null;
+    } | null;
+  } | null;
+};
+
+type EspnScoreboardPayload = {
+  leagues?: Array<{
+    abbreviation?: string | null;
+    name?: string | null;
+  }> | null;
+  events?: EspnScoreboardEvent[] | null;
+};
+
 export class TopGamesRequestError extends Error {
   status: number;
 
@@ -149,6 +234,24 @@ function normalizeDraftKingsUrl(value: string | null | undefined) {
 
   if (trimmedValue.startsWith("/")) {
     return `${DRAFTKINGS_BASE_URL}${trimmedValue}`;
+  }
+
+  return null;
+}
+
+function normalizeEspnUrl(value: string | null | undefined) {
+  const trimmedValue = readTrimmedString(value);
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  if (trimmedValue.startsWith("http://") || trimmedValue.startsWith("https://")) {
+    return trimmedValue;
+  }
+
+  if (trimmedValue.startsWith("/")) {
+    return `${ESPN_BASE_URL}${trimmedValue}`;
   }
 
   return null;
@@ -269,6 +372,39 @@ function buildEventUrl(event: DraftKingsEvent) {
   }
 
   return `${DRAFTKINGS_BASE_URL}/event/${eventId}`;
+}
+
+function buildTopGameIdentity(game: TopGame) {
+  return `${getTopGamesDateKey(new Date(game.startTime))}:${game.league.toUpperCase()}:${game.away.abbreviation.toUpperCase()}:${game.home.abbreviation.toUpperCase()}`;
+}
+
+function orderTopGamesForTicker(items: TopGame[]) {
+  const priorityByState: Record<TopGameState, number> = {
+    in: 0,
+    pre: 1,
+    post: 2,
+  };
+
+  return items
+    .map((item, index) => ({
+      item,
+      index,
+    }))
+    .sort((left, right) => {
+      const priorityDifference =
+        priorityByState[left.item.status.state] - priorityByState[right.item.status.state];
+
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+
+      if (left.item.status.state === "post" && right.item.status.state === "post") {
+        return new Date(right.item.startTime).getTime() - new Date(left.item.startTime).getTime();
+      }
+
+      return left.index - right.index;
+    })
+    .map(({ item }) => item);
 }
 
 function readParticipant(
@@ -513,14 +649,16 @@ export function parseTopGamesFromDraftKingsLivePayload(
 
 export function collectCompletedTopGames(items: TopGame[]) {
   const completedItems: TopGame[] = [];
-  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
 
   for (const item of items) {
-    if (item.status.state !== "post" || seenIds.has(item.id)) {
+    const itemKey = buildTopGameIdentity(item);
+
+    if (item.status.state !== "post" || seenKeys.has(itemKey)) {
       continue;
     }
 
-    seenIds.add(item.id);
+    seenKeys.add(itemKey);
     completedItems.push(item);
   }
 
@@ -529,27 +667,187 @@ export function collectCompletedTopGames(items: TopGame[]) {
 
 export function mergeTopGamesWithCompleted(currentItems: TopGame[], completedItems: TopGame[]) {
   const mergedItems: TopGame[] = [];
-  const seenIds = new Set<string>();
+  const seenKeys = new Set<string>();
 
   for (const item of currentItems) {
-    if (seenIds.has(item.id)) {
+    const itemKey = buildTopGameIdentity(item);
+
+    if (seenKeys.has(itemKey)) {
       continue;
     }
 
-    seenIds.add(item.id);
+    seenKeys.add(itemKey);
     mergedItems.push(item);
   }
 
   for (const item of completedItems) {
-    if (item.status.state !== "post" || seenIds.has(item.id)) {
+    const itemKey = buildTopGameIdentity(item);
+
+    if (item.status.state !== "post" || seenKeys.has(itemKey)) {
       continue;
     }
 
-    seenIds.add(item.id);
+    seenKeys.add(itemKey);
     mergedItems.push(item);
   }
 
-  return mergedItems;
+  return orderTopGamesForTicker(mergedItems);
+}
+
+function readEspnCompetitor(
+  competitors: EspnScoreboardCompetitor[] | null | undefined,
+  homeAway: "away" | "home",
+) {
+  return (
+    competitors?.find((competitor) => readTrimmedString(competitor.homeAway)?.toLowerCase() === homeAway) ??
+    null
+  );
+}
+
+function readEspnTeam(competitor: EspnScoreboardCompetitor | null): TopGameTeam | null {
+  const abbreviation = readTrimmedString(competitor?.team?.abbreviation);
+  const displayName =
+    readTrimmedString(competitor?.team?.displayName) ??
+    readTrimmedString(competitor?.team?.shortDisplayName) ??
+    readTrimmedString(competitor?.team?.name) ??
+    readTrimmedString(competitor?.team?.location);
+
+  if (!abbreviation || !displayName) {
+    return null;
+  }
+
+  return {
+    abbreviation,
+    displayName,
+    score: readScoreValue(competitor?.score),
+    spread: null,
+    spreadOdds: null,
+  };
+}
+
+function readPreferredEspnEventUrl(event: EspnScoreboardEvent) {
+  const links = Array.isArray(event.links) ? event.links : [];
+
+  for (const preferredRel of ["recap", "summary", "boxscore", "gamecast", "event"]) {
+    const matchingLink = links.find((link) =>
+      Array.isArray(link.rel) ? link.rel.includes(preferredRel) : false,
+    );
+
+    const href = normalizeEspnUrl(matchingLink?.href);
+
+    if (href) {
+      return href;
+    }
+  }
+
+  return normalizeEspnUrl(links[0]?.href);
+}
+
+function normalizeEspnCompletedGame(
+  event: EspnScoreboardEvent,
+  leagueAbbreviation: string,
+): TopGame | null {
+  const id = readTrimmedString(event.id);
+  const startTime = readTrimmedString(event.date);
+  const competition = Array.isArray(event.competitions) ? event.competitions[0] : null;
+  const statusType = competition?.status?.type ?? event.status?.type ?? null;
+
+  if (
+    !id ||
+    !startTime ||
+    Number.isNaN(Date.parse(startTime)) ||
+    readTrimmedString(statusType?.state) !== "post" ||
+    statusType?.completed !== true
+  ) {
+    return null;
+  }
+
+  const competitors = Array.isArray(competition?.competitors) ? competition?.competitors : [];
+  const awayTeam = readEspnTeam(readEspnCompetitor(competitors, "away"));
+  const homeTeam = readEspnTeam(readEspnCompetitor(competitors, "home"));
+
+  if (!awayTeam || !homeTeam) {
+    return null;
+  }
+
+  const preferredUrl = readPreferredEspnEventUrl(event);
+
+  return {
+    id: `espn-${leagueAbbreviation.toLowerCase()}-${id}`,
+    league: leagueAbbreviation,
+    provider: "ESPN",
+    startTime,
+    away: awayTeam,
+    home: homeTeam,
+    status: {
+      state: "post",
+      detail: readTrimmedString(statusType?.detail) ?? "Final",
+      shortDetail: readTrimmedString(statusType?.shortDetail) ?? "Final",
+      isComplete: true,
+    },
+    gameUrl: preferredUrl,
+    scoreboardUrl: preferredUrl,
+  } satisfies TopGame;
+}
+
+export function parseCompletedTopGamesFromEspnScoreboardPayload(
+  payload: EspnScoreboardPayload,
+  fallbackLeagueAbbreviation: string,
+) {
+  if (!Array.isArray(payload.events)) {
+    return [];
+  }
+
+  const leagueAbbreviation =
+    readTrimmedString(payload.leagues?.[0]?.abbreviation) ?? fallbackLeagueAbbreviation;
+
+  return payload.events
+    .map((event) => normalizeEspnCompletedGame(event, leagueAbbreviation))
+    .filter((game): game is TopGame => game !== null);
+}
+
+export async function fetchCompletedTopGamesForDate(
+  dateKey = getTopGamesDateKey(),
+  limit = 10,
+) {
+  const scoreboardDate = dateKey.replaceAll("-", "");
+  const completedItems: TopGame[] = [];
+
+  await Promise.all(
+    ESPN_SCOREBOARD_CONFIGS.map(async ({ sport, leagueSlug, leagueAbbreviation }) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort("timeout"), TOP_GAMES_REQUEST_TIMEOUT_MS);
+
+      try {
+        const response = await fetch(
+          `${ESPN_BASE_URL.replace("https://www.espn.com", "https://site.api.espn.com")}/apis/site/v2/sports/${sport}/${leagueSlug}/scoreboard?dates=${scoreboardDate}`,
+          {
+            headers: {
+              Accept: "application/json",
+              "User-Agent": "Mozilla/5.0",
+            },
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as EspnScoreboardPayload;
+        completedItems.push(
+          ...parseCompletedTopGamesFromEspnScoreboardPayload(payload, leagueAbbreviation),
+        );
+      } catch {
+        // Ignore individual scoreboard failures so the top bar can still load.
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }),
+  );
+
+  return orderTopGamesForTicker(collectCompletedTopGames(completedItems)).slice(0, limit);
 }
 
 export async function fetchTopGames(limit = 10) {
@@ -659,7 +957,7 @@ export function isValidTopGamesResponse(value: unknown): value is TopGamesRespon
       readTrimmedString(item.id) !== null &&
       readTrimmedString(item.league) !== null &&
       readTrimmedString(item.startTime) !== null &&
-      item.provider === "DraftKings" &&
+      (item.provider === "DraftKings" || item.provider === "ESPN") &&
       readTrimmedString(item.away.abbreviation) !== null &&
       readTrimmedString(item.home.abbreviation) !== null &&
       readTrimmedString(item.status.detail) !== null &&
